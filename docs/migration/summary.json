@@ -1,0 +1,15 @@
+{
+  "source_repository": "https://github.com/ruihanzhu-Reina/CoordScope",
+  "source_commit": "f0a3ba02ccaece21491301d7fb8fec950644575f",
+  "source_branch": "feat/folded-runtime-governance",
+  "source_tracked_files": 37235,
+  "dispositions": {
+    "historical_assets_or_replaced_configuration": 86,
+    "migrated_or_extracted": 139,
+    "historical_evidence_retained_at_source": 36886,
+    "historical_profile_or_replaced_automation": 57,
+    "legacy_engine_or_unrelated_upstream": 67
+  },
+  "byte_identical_benchmark_files": 112,
+  "old_checkout_modified": false
+}

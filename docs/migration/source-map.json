@@ -1,0 +1,425 @@
+{
+  "src/agentdojo_manta/multicamel/session.py": [
+    "src/coordscope/agents/session.py"
+  ],
+  "src/agentdojo_manta/multicamel/interpreter.py": [
+    "src/coordscope/agents/interpreter.py"
+  ],
+  "src/agentdojo_manta/multicamel/prompts.py": [
+    "src/coordscope/agents/prompts.py"
+  ],
+  "src/agentdojo_manta/multicamel/pipeline.py": [
+    "src/coordscope/integrations/agentdojo/pipeline.py"
+  ],
+  "src/agentdojo_manta/multicamel/partitions.py": [
+    "src/coordscope/integrations/agentdojo/partitions.py",
+    "src/coordscope/agents/roles.py"
+  ],
+  "upstreams/manta/MAS/self_evolved/governed_gateway.py": [
+    "src/coordscope/security/gateway.py"
+  ],
+  "upstreams/manta/MAS/self_evolved/tool_gateway.py": [
+    "src/coordscope/security/read_gateway.py"
+  ],
+  "upstreams/manta/MAS/self_evolved/action_policy.py": [
+    "src/coordscope/security/policy.py"
+  ],
+  "upstreams/manta/MAS/self_evolved/tool_manifest.py": [
+    "src/coordscope/security/manifest.py"
+  ],
+  "upstreams/manta/MAS/self_evolved/policy_compiler.py": [
+    "src/coordscope/security/compiler.py"
+  ],
+  "upstreams/manta/MAS/self_evolved/evidence_store.py": [
+    "src/coordscope/evidence/store.py"
+  ],
+  "upstreams/manta/MAS/self_evolved/provenance_graph.py": [
+    "src/coordscope/evidence/provenance.py"
+  ],
+  "src/agentdojo_manta/providers.py": [
+    "src/coordscope/models/providers.py"
+  ],
+  "src/agentdojo_manta/budget.py": [
+    "src/coordscope/models/budget.py"
+  ],
+  "src/agentdojo_manta/deepseek_pro.py": [
+    "src/coordscope/models/validation.py"
+  ],
+  "src/agentdojo_manta/metrics.py": [
+    "src/coordscope/evaluation/metrics.py"
+  ],
+  "src/agentdojo_manta/adapter.py": [
+    "src/coordscope/models/client.py",
+    "src/coordscope/integrations/agentdojo/bindings.py"
+  ],
+  "scripts/manta/run_agentdojo_manta.py": [
+    "src/coordscope/evaluation/runner.py",
+    "src/coordscope/cli.py"
+  ],
+  "tests/manta/test_multicamel_isolation.py": [
+    "tests/unit/agents/test_isolation.py",
+    "tests/helpers/scripted.py"
+  ],
+  "tests/manta/test_governed_gateway.py": [
+    "tests/unit/security/test_gateway.py"
+  ],
+  "tests/manta/test_provenance_graph.py": [
+    "tests/unit/evidence/test_provenance.py"
+  ],
+  "tests/manta/test_multicamel_adapter.py": [
+    "tests/integration/agentdojo/test_pipeline.py",
+    "tests/unit/models/test_client.py"
+  ],
+  "tests/manta/test_tool_manifest.py": [
+    "tests/integration/agentdojo/test_manifest.py"
+  ],
+  "tests/manta/test_metrics.py": [
+    "tests/unit/evaluation/test_metrics.py"
+  ],
+  "tests/manta/test_budget.py": [
+    "tests/unit/models/test_budget.py"
+  ],
+  "LICENSE": [
+    "LICENSE",
+    "third_party/agentdojo/LICENSE"
+  ],
+  "docs/manta/MULTIAGENTDOJO_NOTICE.md": [
+    "docs/references/multiagentdojo-license.md"
+  ],
+  "src/agentdojo/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/__init__.py"
+  ],
+  "src/agentdojo/agent_pipeline/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/agent_pipeline/__init__.py"
+  ],
+  "src/agentdojo/agent_pipeline/agent_pipeline.py": [
+    "third_party/agentdojo/src/agentdojo/agent_pipeline/agent_pipeline.py"
+  ],
+  "src/agentdojo/agent_pipeline/base_pipeline_element.py": [
+    "third_party/agentdojo/src/agentdojo/agent_pipeline/base_pipeline_element.py"
+  ],
+  "src/agentdojo/agent_pipeline/basic_elements.py": [
+    "third_party/agentdojo/src/agentdojo/agent_pipeline/basic_elements.py"
+  ],
+  "src/agentdojo/agent_pipeline/errors.py": [
+    "third_party/agentdojo/src/agentdojo/agent_pipeline/errors.py"
+  ],
+  "src/agentdojo/agent_pipeline/ground_truth_pipeline.py": [
+    "third_party/agentdojo/src/agentdojo/agent_pipeline/ground_truth_pipeline.py"
+  ],
+  "src/agentdojo/agent_pipeline/llms/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/agent_pipeline/llms/__init__.py"
+  ],
+  "src/agentdojo/agent_pipeline/llms/anthropic_llm.py": [
+    "third_party/agentdojo/src/agentdojo/agent_pipeline/llms/anthropic_llm.py"
+  ],
+  "src/agentdojo/agent_pipeline/llms/cohere_llm.py": [
+    "third_party/agentdojo/src/agentdojo/agent_pipeline/llms/cohere_llm.py"
+  ],
+  "src/agentdojo/agent_pipeline/llms/google_llm.py": [
+    "third_party/agentdojo/src/agentdojo/agent_pipeline/llms/google_llm.py"
+  ],
+  "src/agentdojo/agent_pipeline/llms/local_llm.py": [
+    "third_party/agentdojo/src/agentdojo/agent_pipeline/llms/local_llm.py"
+  ],
+  "src/agentdojo/agent_pipeline/llms/openai_llm.py": [
+    "third_party/agentdojo/src/agentdojo/agent_pipeline/llms/openai_llm.py"
+  ],
+  "src/agentdojo/agent_pipeline/llms/prompting_llm.py": [
+    "third_party/agentdojo/src/agentdojo/agent_pipeline/llms/prompting_llm.py"
+  ],
+  "src/agentdojo/agent_pipeline/pi_detector.py": [
+    "third_party/agentdojo/src/agentdojo/agent_pipeline/pi_detector.py"
+  ],
+  "src/agentdojo/agent_pipeline/planner.py": [
+    "third_party/agentdojo/src/agentdojo/agent_pipeline/planner.py"
+  ],
+  "src/agentdojo/agent_pipeline/tool_execution.py": [
+    "third_party/agentdojo/src/agentdojo/agent_pipeline/tool_execution.py"
+  ],
+  "src/agentdojo/ast_utils.py": [
+    "third_party/agentdojo/src/agentdojo/ast_utils.py"
+  ],
+  "src/agentdojo/attacks/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/attacks/__init__.py"
+  ],
+  "src/agentdojo/attacks/attack_registry.py": [
+    "third_party/agentdojo/src/agentdojo/attacks/attack_registry.py"
+  ],
+  "src/agentdojo/attacks/base_attacks.py": [
+    "third_party/agentdojo/src/agentdojo/attacks/base_attacks.py"
+  ],
+  "src/agentdojo/attacks/baseline_attacks.py": [
+    "third_party/agentdojo/src/agentdojo/attacks/baseline_attacks.py"
+  ],
+  "src/agentdojo/attacks/dos_attacks.py": [
+    "third_party/agentdojo/src/agentdojo/attacks/dos_attacks.py"
+  ],
+  "src/agentdojo/attacks/important_instructions_attacks.py": [
+    "third_party/agentdojo/src/agentdojo/attacks/important_instructions_attacks.py"
+  ],
+  "src/agentdojo/base_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/base_tasks.py"
+  ],
+  "src/agentdojo/benchmark.py": [
+    "third_party/agentdojo/src/agentdojo/benchmark.py"
+  ],
+  "src/agentdojo/data/suites/banking/environment.yaml": [
+    "third_party/agentdojo/src/agentdojo/data/suites/banking/environment.yaml"
+  ],
+  "src/agentdojo/data/suites/banking/injection_vectors.yaml": [
+    "third_party/agentdojo/src/agentdojo/data/suites/banking/injection_vectors.yaml"
+  ],
+  "src/agentdojo/data/suites/slack/environment.yaml": [
+    "third_party/agentdojo/src/agentdojo/data/suites/slack/environment.yaml"
+  ],
+  "src/agentdojo/data/suites/slack/injection_vectors.yaml": [
+    "third_party/agentdojo/src/agentdojo/data/suites/slack/injection_vectors.yaml"
+  ],
+  "src/agentdojo/data/suites/travel/environment.yaml": [
+    "third_party/agentdojo/src/agentdojo/data/suites/travel/environment.yaml"
+  ],
+  "src/agentdojo/data/suites/travel/injection_vectors.yaml": [
+    "third_party/agentdojo/src/agentdojo/data/suites/travel/injection_vectors.yaml"
+  ],
+  "src/agentdojo/data/suites/workspace/environment.yaml": [
+    "third_party/agentdojo/src/agentdojo/data/suites/workspace/environment.yaml"
+  ],
+  "src/agentdojo/data/suites/workspace/gpt_prompts.txt": [
+    "third_party/agentdojo/src/agentdojo/data/suites/workspace/gpt_prompts.txt"
+  ],
+  "src/agentdojo/data/suites/workspace/include/calendar.yaml": [
+    "third_party/agentdojo/src/agentdojo/data/suites/workspace/include/calendar.yaml"
+  ],
+  "src/agentdojo/data/suites/workspace/include/cloud_drive.yaml": [
+    "third_party/agentdojo/src/agentdojo/data/suites/workspace/include/cloud_drive.yaml"
+  ],
+  "src/agentdojo/data/suites/workspace/include/inbox.yaml": [
+    "third_party/agentdojo/src/agentdojo/data/suites/workspace/include/inbox.yaml"
+  ],
+  "src/agentdojo/data/suites/workspace/injection_vectors.yaml": [
+    "third_party/agentdojo/src/agentdojo/data/suites/workspace/injection_vectors.yaml"
+  ],
+  "src/agentdojo/data/system_messages.yaml": [
+    "third_party/agentdojo/src/agentdojo/data/system_messages.yaml"
+  ],
+  "src/agentdojo/default_suites/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/__init__.py"
+  ],
+  "src/agentdojo/default_suites/v1/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/__init__.py"
+  ],
+  "src/agentdojo/default_suites/v1/banking/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/banking/__init__.py"
+  ],
+  "src/agentdojo/default_suites/v1/banking/injection_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/banking/injection_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1/banking/task_suite.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/banking/task_suite.py"
+  ],
+  "src/agentdojo/default_suites/v1/banking/user_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/banking/user_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1/slack/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/slack/__init__.py"
+  ],
+  "src/agentdojo/default_suites/v1/slack/injection_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/slack/injection_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1/slack/task_suite.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/slack/task_suite.py"
+  ],
+  "src/agentdojo/default_suites/v1/slack/user_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/slack/user_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1/tools/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/tools/__init__.py"
+  ],
+  "src/agentdojo/default_suites/v1/tools/banking_client.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/tools/banking_client.py"
+  ],
+  "src/agentdojo/default_suites/v1/tools/calendar_client.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/tools/calendar_client.py"
+  ],
+  "src/agentdojo/default_suites/v1/tools/cloud_drive_client.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/tools/cloud_drive_client.py"
+  ],
+  "src/agentdojo/default_suites/v1/tools/email_client.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/tools/email_client.py"
+  ],
+  "src/agentdojo/default_suites/v1/tools/file_reader.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/tools/file_reader.py"
+  ],
+  "src/agentdojo/default_suites/v1/tools/slack.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/tools/slack.py"
+  ],
+  "src/agentdojo/default_suites/v1/tools/travel_booking_client.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/tools/travel_booking_client.py"
+  ],
+  "src/agentdojo/default_suites/v1/tools/types.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/tools/types.py"
+  ],
+  "src/agentdojo/default_suites/v1/tools/user_account.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/tools/user_account.py"
+  ],
+  "src/agentdojo/default_suites/v1/tools/web.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/tools/web.py"
+  ],
+  "src/agentdojo/default_suites/v1/travel/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/travel/__init__.py"
+  ],
+  "src/agentdojo/default_suites/v1/travel/injection_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/travel/injection_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1/travel/task_suite.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/travel/task_suite.py"
+  ],
+  "src/agentdojo/default_suites/v1/travel/user_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/travel/user_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1/workspace/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/workspace/__init__.py"
+  ],
+  "src/agentdojo/default_suites/v1/workspace/injection_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/workspace/injection_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1/workspace/task_suite.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/workspace/task_suite.py"
+  ],
+  "src/agentdojo/default_suites/v1/workspace/user_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1/workspace/user_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1_1/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_1/__init__.py"
+  ],
+  "src/agentdojo/default_suites/v1_1/travel/user_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_1/travel/user_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1_1_1/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_1_1/__init__.py"
+  ],
+  "src/agentdojo/default_suites/v1_1_1/banking/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_1_1/banking/__init__.py"
+  ],
+  "src/agentdojo/default_suites/v1_1_1/banking/user_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_1_1/banking/user_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1_1_1/slack/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_1_1/slack/__init__.py"
+  ],
+  "src/agentdojo/default_suites/v1_1_1/slack/user_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_1_1/slack/user_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1_1_1/travel/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_1_1/travel/__init__.py"
+  ],
+  "src/agentdojo/default_suites/v1_1_1/travel/injection_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_1_1/travel/injection_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1_1_1/travel/user_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_1_1/travel/user_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1_1_1/workspace/user_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_1_1/workspace/user_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1_1_2/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_1_2/__init__.py"
+  ],
+  "src/agentdojo/default_suites/v1_1_2/travel/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_1_2/travel/__init__.py"
+  ],
+  "src/agentdojo/default_suites/v1_1_2/travel/injection_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_1_2/travel/injection_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1_1_2/workspace/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_1_2/workspace/__init__.py"
+  ],
+  "src/agentdojo/default_suites/v1_1_2/workspace/injection_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_1_2/workspace/injection_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1_1_2/workspace/user_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_1_2/workspace/user_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1_2/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_2/__init__.py"
+  ],
+  "src/agentdojo/default_suites/v1_2/banking/injection_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_2/banking/injection_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1_2/slack/user_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_2/slack/user_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1_2/travel/injection_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_2/travel/injection_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1_2/travel/user_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_2/travel/user_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1_2/workspace/injection_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_2/workspace/injection_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1_2/workspace/user_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_2/workspace/user_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1_2_1/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_2_1/__init__.py"
+  ],
+  "src/agentdojo/default_suites/v1_2_1/workspace/injection_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_2_1/workspace/injection_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1_2_2/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_2_2/__init__.py"
+  ],
+  "src/agentdojo/default_suites/v1_2_2/banking/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_2_2/banking/__init__.py"
+  ],
+  "src/agentdojo/default_suites/v1_2_2/banking/user_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_2_2/banking/user_tasks.py"
+  ],
+  "src/agentdojo/default_suites/v1_2_2/workspace/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_2_2/workspace/__init__.py"
+  ],
+  "src/agentdojo/default_suites/v1_2_2/workspace/user_tasks.py": [
+    "third_party/agentdojo/src/agentdojo/default_suites/v1_2_2/workspace/user_tasks.py"
+  ],
+  "src/agentdojo/functions_runtime.py": [
+    "third_party/agentdojo/src/agentdojo/functions_runtime.py"
+  ],
+  "src/agentdojo/logging.py": [
+    "third_party/agentdojo/src/agentdojo/logging.py"
+  ],
+  "src/agentdojo/models.py": [
+    "third_party/agentdojo/src/agentdojo/models.py"
+  ],
+  "src/agentdojo/scripts/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/scripts/__init__.py"
+  ],
+  "src/agentdojo/scripts/benchmark.py": [
+    "third_party/agentdojo/src/agentdojo/scripts/benchmark.py"
+  ],
+  "src/agentdojo/scripts/check_suites.py": [
+    "third_party/agentdojo/src/agentdojo/scripts/check_suites.py"
+  ],
+  "src/agentdojo/strenum.py": [
+    "third_party/agentdojo/src/agentdojo/strenum.py"
+  ],
+  "src/agentdojo/task_suite/__init__.py": [
+    "third_party/agentdojo/src/agentdojo/task_suite/__init__.py"
+  ],
+  "src/agentdojo/task_suite/load_suites.py": [
+    "third_party/agentdojo/src/agentdojo/task_suite/load_suites.py"
+  ],
+  "src/agentdojo/task_suite/task_combinators.py": [
+    "third_party/agentdojo/src/agentdojo/task_suite/task_combinators.py"
+  ],
+  "src/agentdojo/task_suite/task_suite.py": [
+    "third_party/agentdojo/src/agentdojo/task_suite/task_suite.py"
+  ],
+  "src/agentdojo/types.py": [
+    "third_party/agentdojo/src/agentdojo/types.py"
+  ],
+  "src/agentdojo/yaml_loader.py": [
+    "third_party/agentdojo/src/agentdojo/yaml_loader.py"
+  ]
+}
