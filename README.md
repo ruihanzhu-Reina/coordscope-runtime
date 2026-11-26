@@ -1,6 +1,10 @@
-# CoordScope
+# CoordScope Runtime
 
 Isolated multi-agent execution with task-scoped parameter authorization.
+
+**Current implementation:** [coordscope-runtime](https://github.com/ruihanzhu-Reina/coordscope-runtime).
+**Historical experiments and earlier methods:** [CoordScope](https://github.com/ruihanzhu-Reina/CoordScope).
+The installable Python package and CLI remain named `coordscope`.
 
 This project extracts the current `multicamel_governed` method from
 [`ruihanzhu-Reina/CoordScope`](https://github.com/ruihanzhu-Reina/CoordScope),
