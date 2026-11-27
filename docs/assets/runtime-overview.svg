@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="756" viewBox="0 0 1280 756" role="img" aria-labelledby="title description">
+  <title id="title">CoordScope Runtime execution boundary</title>
+  <desc id="description">Host-owned task and policy enter a host broker that checks authorization and resource freshness, records durable operations in SQLite, and dispatches native tool handlers. Model transport stays in the host. Fixed interpreter workers run in separate processes and communicate with the broker through bounded JSON RPC. The shipped AgentDojo adapter uses this shared runtime; other adapters are an extension point, not shipped integrations.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M 1 1 L 9 5 L 1 9 Z" fill="#718096"/></marker>
+    <style>
+      text { font-family: Inter, 'Segoe UI', Arial, sans-serif; fill: #192B43; }
+      .eyebrow { font-size: 14px; font-weight: 700; letter-spacing: 2px; fill: #63758A; }
+      .heading { font-size: 23px; font-weight: 700; }
+      .label { font-size: 18px; font-weight: 600; }
+      .body { font-size: 17px; fill: #52677E; }
+      .small { font-size: 15px; fill: #61748B; }
+      .line { fill: none; stroke: #718096; stroke-width: 2; marker-end: url(#arrow); }
+    </style>
+  </defs>
+  <rect width="1280" height="756" rx="18" fill="#F5F8FC"/>
+  <text x="42" y="42" class="eyebrow">ONE RUNTIME · EXPLICIT AUTHORITY</text>
+  <rect x="32" y="76" width="1216" height="350" rx="20" fill="#FFFFFF" stroke="#D9E2ED" stroke-width="1.5"/>
+  <text x="58" y="110" class="eyebrow">HOST PROCESS</text>
+  <text x="58" y="139" class="small">Policy, credentials, tools and ledger stay here</text>
+
+  <rect x="440" y="104" width="400" height="78" rx="13" fill="#F0F4FA" stroke="#D9E2ED"/>
+  <text x="640" y="135" text-anchor="middle" class="label">Model transport</text>
+  <text x="640" y="161" text-anchor="middle" class="body">Plan / extract completion calls</text>
+  <path d="M 632 184 L 632 208" class="line"/>
+  <path d="M 648 210 L 648 186" class="line"/>
+
+  <rect x="58" y="234" width="278" height="152" rx="14" fill="#F8FAFD" stroke="#D9E2ED"/>
+  <text x="82" y="270" class="heading">Task + host policy</text>
+  <text x="82" y="303" class="body">Trusted request and role tools</text>
+  <text x="82" y="330" class="body">Exact / source-bound grants</text>
+  <text x="82" y="357" class="small">Models propose; the host authorizes</text>
+
+  <rect x="440" y="216" width="400" height="178" rx="16" fill="#EAF1FD" stroke="#A5BEE9" stroke-width="1.5"/>
+  <rect x="440" y="216" width="6" height="178" rx="3" fill="#316BD1"/>
+  <text x="472" y="254" class="heading">Host broker</text>
+  <text x="472" y="286" class="body">Check arguments + resource freshness</text>
+  <text x="472" y="314" class="body">Reserve grant → dispatch real handler</text>
+  <rect x="468" y="333" width="344" height="41" rx="8" fill="#FFFFFF" stroke="#C7D6EE"/>
+  <text x="640" y="359" text-anchor="middle" class="label">SQLite journal + evidence</text>
+
+  <rect x="944" y="234" width="278" height="152" rx="14" fill="#F8FAFD" stroke="#D9E2ED"/>
+  <text x="968" y="270" class="heading">Native environment</text>
+  <text x="968" y="303" class="body">Tool handlers + task state</text>
+  <text x="968" y="330" class="body">Actual results → host receipts</text>
+  <text x="968" y="357" class="small">Native judges stay in the adapter</text>
+  <path d="M 338 309 L 428 309" class="line"/>
+  <path d="M 842 301 L 932 301" class="line"/>
+  <path d="M 934 317 L 844 317" class="line"/>
+
+  <path d="M 632 399 L 632 488" class="line"/>
+  <path d="M 648 490 L 648 401" class="line"/>
+  <rect x="666" y="442" width="198" height="27" rx="6" fill="#F5F8FC"/>
+  <text x="680" y="461" class="small">Bounded JSON RPC</text>
+  <rect x="440" y="496" width="400" height="106" rx="16" fill="#E9F5F2" stroke="#91C4B8" stroke-width="1.5"/>
+  <text x="640" y="533" text-anchor="middle" class="heading">Interpreter workers</text>
+  <text x="640" y="562" text-anchor="middle" class="body">Fixed code · bounded JSON plans</text>
+  <text x="640" y="586" text-anchor="middle" class="small">Separate process for each plan</text>
+  <text x="58" y="527" class="eyebrow">PROCESS BOUNDARY</text>
+  <text x="58" y="557" class="body">Workers request operations.</text>
+  <text x="58" y="583" class="body">Host checks and executes them.</text>
+  <text x="944" y="557" class="body">Separate address spaces;</text>
+  <text x="944" y="583" class="body">same OS user, no code sandbox.</text>
+
+  <path d="M 58 634 L 1222 634" stroke="#D9E2ED" stroke-width="1.5"/>
+  <text x="58" y="665" class="eyebrow">BENCHMARK ADAPTERS</text>
+  <text x="357" y="665" class="small">Same runtime method · native environments and judges</text>
+  <rect x="58" y="684" width="532" height="44" rx="10" fill="#FFFFFF" stroke="#B7C8DF" stroke-width="1.5"/>
+  <text x="324" y="712" text-anchor="middle" class="label">AgentDojo adapter · shipped</text>
+  <rect x="614" y="684" width="608" height="44" rx="10" fill="#F5F8FC" stroke="#A4B3C5" stroke-width="1.5" stroke-dasharray="6 5"/>
+  <text x="918" y="712" text-anchor="middle" class="body">External adapters · extension point, not shipped</text>
+</svg>

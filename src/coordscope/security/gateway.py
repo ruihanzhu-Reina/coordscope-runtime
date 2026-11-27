@@ -1,237 +1,263 @@
-"""Task-local exact capabilities and host-owned execution receipts.
-
-Semantic approval is still a trust assumption. No tool output, model-provided
-source label, or progress claim can issue a capability. This first version uses
-whole-environment versions and serial dispatch, not resource-level concurrency.
-"""
+"""Deterministic authorization and a durable, host-owned dispatch boundary."""
 
 import copy
+import hashlib
 import json
-import uuid
+import threading
 
-from .manifest import effect
-from .read_gateway import ToolGateway
+from jsonschema import Draft202012Validator
+from jsonschema.exceptions import ValidationError
+
+from coordscope.evidence.provenance import json_snapshot
+
+from .journal import Journal, canonical
+from .resources import Footprint, ResourceTracker
 
 
-def canonical(value):
-    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False, allow_nan=False)
+class GovernedGateway:
+    def __init__(self, tools, store, policy, *, journal_path, task_id, user_request, resources=None):
+        if not isinstance(task_id, str) or not task_id or not isinstance(user_request, str):
+            raise ValueError("A stable host task identity and user request are required.")
+        self.tools = {tool["name"]: tool for tool in tools}
+        if len(self.tools) != len(tools):
+            raise ValueError("Duplicate host tool names.")
+        for tool in tools:
+            if tool.get("effect") not in {"read", "navigate", "send", "mutate", "consume"}:
+                raise ValueError("Every host tool requires an explicit reviewed effect.")
+            if not callable(tool.get("handler")):
+                raise ValueError("Every host tool requires a handler.")
+            Draft202012Validator.check_schema(tool["parameters"])
+        self.validators = {tool["name"]: Draft202012Validator(tool["parameters"]) for tool in tools}
+        policy.validate(tools)
+        catalog = [{key: value for key, value in tool.items() if key not in {"handler", "resources"}} for tool in tools]
+        policy_document = policy.to_document()
+        policy_document["grants"].sort(key=lambda grant: grant["id"])
+        self.journal = Journal(
+            journal_path,
+            dict(
+                task_id=task_id,
+                user_request=user_request,
+                policy=policy_document,
+                policy_fingerprint=policy.fingerprint,
+                catalog=sorted(catalog, key=lambda t: t["name"]),
+            ),
+        )
+        try:
+            self.store, self.policy, self.task_scope = store, policy, task_id
+            self.resources = ResourceTracker(self.journal, resources)
+            self.permissions, self.events = {}, []
+            self.lock = threading.RLock()
+            self.store.attach_journal(self.journal)
+        except BaseException:
+            self.journal.close()
+            raise
 
-
-class GovernedGateway(ToolGateway):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.task_scope = uuid.uuid4().hex
-        self.capabilities = {}
-        self.blueprint = {}
-        self.receipts = []
-        self.policy_events = []
-        self.initialized = False
-
-    def initialize(self, actions):
-        """Host-only: accept the isolated compiler's exact, complete actions.
-
-        Validate the entire batch before publishing anything. Partial/derived
-        plans stay on the semantic slow path instead of guessing authority.
-        """
-        if self.initialized:
-            raise ValueError("The initial blueprint is immutable within a task.")
-        if not isinstance(actions, list) or len(actions) > 16:
-            raise ValueError("Expected at most sixteen exact actions.")
-        pending = {}
-        for row in actions:
-            if not isinstance(row, dict) or set(row) != {"tool", "arguments"}:
-                raise ValueError("Invalid blueprint action.")
-            name, arguments = row["tool"], row["arguments"]
-            self._validate(name, arguments)
-            if effect(name) in {"read", "unknown"}:
-                raise ValueError("Only reviewed observable actions belong in this blueprint.")
-            key = (name, canonical(arguments))
-            pending[key] = self._capability(name, arguments, "isolated_compiler", 0)
+    def close(self):
         with self.lock:
-            self.capabilities.update(pending)
-            self.blueprint = dict(pending)
-            self.initialized = True
+            self.journal.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.close()
+
+    def permit(self, actor, names):
+        with self.lock:
+            names = set(names)
+            if not names <= self.tools.keys():
+                raise ValueError("Cannot permit tools outside the host catalog.")
+            self.permissions[actor] = names
 
     def _validate(self, name, args):
-        if name not in self.tools or effect(name) == "unknown" or not isinstance(args, dict):
-            raise ValueError("Unknown tool or invalid argument object.")
+        if name not in self.tools or not isinstance(args, dict):
+            raise ValueError("Unknown tool or invalid arguments.")
         schema = self.tools[name]["parameters"]
         if set(args) - set(schema.get("properties", {})):
             raise ValueError("Undeclared arguments cannot receive authority.")
         if not set(schema.get("required", ())) <= set(args):
             raise ValueError("Missing required arguments.")
+        self.validators[name].validate(args)
         canonical(args)
 
-    def _capability(self, name, args, origin, version, sources=()):
-        return dict(
-            id=uuid.uuid4().hex,
-            task_scope=self.task_scope,
-            tool=name,
-            arguments_json=canonical(args),
-            origin=origin,
-            version=version,
-            state="available",
-            max_uses=1,
-            sources=copy.deepcopy(list(sources)),
-        )
-
-    def _sources(self, actor, arguments, sources, version):
+    def _sources(self, actor, arguments, sources, exclude_operation=None):
         if not isinstance(sources, dict) or set(sources) - set(arguments):
             raise ValueError("Argument sources must name actual arguments.")
         proofs = []
         for parameter, ref in sources.items():
-            proof = self.store.resolve(actor, ref, arguments[parameter], current_version=version)
+            proof = self.store.resolve(actor, ref, arguments[parameter])
+            stamps = proof.get("resources", {})
+            self.journal.check_conflicts(Footprint(reads=tuple(stamps)).to_document(), exclude_operation)
+            current = self.resources.capture(stamps)
+            if canonical(current) != canonical(stamps):
+                raise ValueError("Source resource changed; fresh evidence is required.")
+            proof["freshness_verified"] = bool(stamps) and all(
+                stamp.get("external") is True for stamp in stamps.values()
+            )
             proofs.append(dict(parameter=parameter, **proof))
         return proofs
 
+    def _dependencies(self, actor, refs, exclude_operation=None):
+        keys = set()
+        for ref in refs:
+            stamps = self.store._row(actor, ref)["resources"]
+            self.journal.check_conflicts(Footprint(reads=tuple(stamps)).to_document(), exclude_operation)
+            if not self.resources.validate(stamps):
+                raise ValueError("An action or control dependency changed; fresh evidence is required.")
+            keys.update(stamps)
+        return keys
+
+    @staticmethod
+    def _failed(output):
+        return isinstance(output, dict) and (
+            bool(output.get("error")) or output.get("ok") is False or output.get("success") is False
+        )
+
+    def _replay(self, actor, row):
+        if row["result"] is None:
+            return dict(already_applied=True, operation_id=row["id"], outcome="committed", result_available=False)
+        ref = row["evidence_id"]
+        try:
+            self.store.grant(actor, [ref])
+            result = self.store.read(actor, ref)
+        except (KeyError, ValueError, TypeError):
+            ref = self.store.add(
+                row["result"], tool=row["tool"], arguments=row["arguments"], resources=row["resources"], actor=actor
+            )
+            result = self.store.read(actor, ref)
+        return dict(already_applied=True, operation_id=row["id"], **result)
+
     def call(self, actor, name, arguments, evidence_ids=(), argument_sources=None):
-        # Freeze once: caller and reviewer cannot mutate the dispatched payload.
         arguments = json.loads(canonical(arguments))
+        sources = copy.deepcopy(argument_sources or {})
         refs = tuple(evidence_ids)
-        sources = {} if argument_sources is None else copy.deepcopy(argument_sources)
         event = dict(
-            actor=actor,
-            tool=name,
-            arguments=copy.deepcopy(arguments),
-            handler_invoked=False,
-            environment_version=self.version,
+            actor=actor, tool=name, arguments=copy.deepcopy(arguments), evidence_ids=list(refs), handler_invoked=False
         )
 
         def deny(reason):
-            event.update(status="blocked", policy_decision="deny", reason=reason)
-            return dict(
-                error="ACTION_BLOCKED",
-                reason=reason,
-                instruction="Resolve the missing evidence or use an authorized alternative.",
-            )
+            event.update(status="blocked", policy_decision="deny", reason=str(reason))
+            self.journal.event("blocked", event)
+            return dict(error="ACTION_BLOCKED", reason=str(reason))
 
         with self.lock:
             self.events.append(event)
+            operation_id = None
+            reserved = False
             if name not in self.permissions.get(actor, set()):
                 return deny("Tool is outside this actor's capabilities.")
             try:
                 self._validate(name, arguments)
                 for ref in refs:
                     self.store.read(actor, ref)
-                proofs = self._sources(actor, arguments, sources, self.version)
-                refs = tuple(dict.fromkeys((*refs, *(p["evidence_id"] for p in proofs))))
-            except (ValueError, KeyError, TypeError) as exc:
-                return deny(str(exc))
-            kind = effect(name)
-            decision, reason = self.contract.initial_decision(name, arguments, actor)
-            if decision == "deny":
-                return deny(reason)
-            if kind == "read":
-                # The reviewed read permission and original single-flight cache
-                # remain unchanged. No model call occurs under this lock.
-                self.events.pop()  # the legacy read gateway records its own event
-                return super().call(actor, name, arguments, refs)
-            signature = (name, canonical(arguments))
-            cap = self.capabilities.get(signature)
-            if cap and cap["state"] == "committed":
-                self.store.grant(actor, [cap["evidence_id"]])
-                event.update(status="already_applied", capability_id=cap["id"])
-                return dict(already_applied=True, **self.store.read(actor, cap["evidence_id"]))
-            if any(c["state"] in {"reserved", "unknown"} for c in self.capabilities.values()):
-                return deny("An effect is pending or unknown; host reconciliation is required before more effects.")
-            if any(key[0] == name for key in self.blueprint) and signature not in self.blueprint:
-                return deny("Arguments violate the isolated initial blueprint; review cannot override it.")
-            version = self.version
-            needs_review = cap is None or (cap["origin"] != "isolated_compiler" and cap["version"] != version)
-            if cap and cap["state"] == "revoked":
-                return deny("Capability was revoked.")
-        if needs_review:
-            # Do not hold the execution lock across a network/model request.
-            try:
-                decision, reason = self.review(name, copy.deepcopy(arguments), refs)
-            except Exception as exc:
-                event.update(status="review_error", error_type=type(exc).__name__, phase="before_handler")
+                tool = self.tools[name]
+                footprint = self.resources.footprint(tool, arguments)
+                if tool["effect"] == "read":
+                    dependency_keys = self._dependencies(actor, refs)
+                    self.journal.check_conflicts(footprint.to_document())
+                    stamps = self.resources.capture((*footprint.reads, *dependency_keys))
+                    event["handler_invoked"] = True
+                    output = tool["handler"](copy.deepcopy(arguments))
+                    ref = self.store.add(output, tool=name, arguments=arguments, resources=stamps, actor=actor)
+                    event.update(status="runtime_error" if self._failed(output) else "executed", evidence_id=ref)
+                    self.journal.event("read", event)
+                    return self.store.read(actor, ref)
+                # Reading an already committed receipt creates no new effect,
+                # so later source changes must not hide that known outcome.
+                for candidate in self.policy.grants:
+                    if candidate.tool != name:
+                        continue
+                    operation_id = hashlib.sha256(canonical([candidate.id, name, arguments]).encode()).hexdigest()
+                    existing = self.journal.operation(operation_id)
+                    if existing and existing["state"] == "committed":
+                        event.update(status="already_applied", operation_id=operation_id)
+                        return self._replay(actor, existing)
+                dependency_keys = self._dependencies(actor, refs)
+                proofs = self._sources(actor, arguments, sources)
+                footprint = Footprint(
+                    reads=(
+                        *footprint.reads,
+                        *dependency_keys,
+                        *(key for proof in proofs for key in proof.get("resources", {})),
+                    ),
+                    writes=footprint.writes,
+                )
+                event["argument_provenance"] = proofs
+                event["evidence_ids"] = list(dict.fromkeys((*refs, *(p["evidence_id"] for p in proofs))))
+                grant = self.policy.authorize(name, arguments, proofs)
+                if grant is None:
+                    return deny("No host action grant matches the exact arguments and verified sources.")
+                operation_id = hashlib.sha256(canonical([grant.id, name, arguments]).encode()).hexdigest()
+                row = self.journal.reserve(operation_id, grant, name, arguments, footprint.to_document())
+                if row["state"] != "reserved":
+                    return deny("Operation outcome is uncertain; host reconciliation is required.")
+                reserved = True
+                # Remote atomicity requires an adapter's conditional write/CAS;
+                # this local check alone does not close a remote race window.
+                self._dependencies(actor, refs, operation_id)
+                fresh_proofs = self._sources(actor, arguments, sources, operation_id)
+                fresh_grant = self.policy.authorize(name, arguments, fresh_proofs)
+                if fresh_grant is None or fresh_grant.id != grant.id:
+                    raise PermissionError("Action authorization changed before dispatch.")
+                self.journal.dispatched(operation_id)
+                reserved = False
+            except (ValueError, KeyError, TypeError, PermissionError, ValidationError) as exc:
+                if reserved:
+                    self.journal.cancel_reserved(operation_id)
+                return deny(exc)
+            except BaseException:
+                if reserved:
+                    self.journal.cancel_reserved(operation_id)
                 raise
-            if decision != "allow":
-                return deny(reason)
-        with self.lock:
-            # Review is an exact task/version-scoped proposal, never dispatch.
-            if self.version != version or name not in self.permissions.get(actor, set()):
-                return deny("State or permissions changed during review; obtain fresh evidence and retry.")
-            if any(c["state"] in {"reserved", "unknown"} for c in self.capabilities.values()):
-                return deny("Another action reserved authority during review.")
-            try:
-                proofs = self._sources(actor, arguments, sources, version)
-            except (ValueError, KeyError, TypeError) as exc:
-                return deny(str(exc))
-            cap = self.capabilities.get(signature)
-            if cap and cap["state"] == "committed":
-                self.store.grant(actor, [cap["evidence_id"]])
-                event.update(status="already_applied")
-                return dict(already_applied=True, **self.store.read(actor, cap["evidence_id"]))
-            if needs_review:
-                cap = self._capability(name, arguments, "semantic_grant", version, proofs)
-                self.capabilities[signature] = cap
-            if not cap or cap["state"] != "available" or cap["arguments_json"] != canonical(arguments):
-                return deny("No available exact capability.")
-            cap["state"] = "reserved"
             event.update(
-                capability_id=cap["id"],
+                operation_id=operation_id,
+                grant_id=grant.id,
                 policy_decision="allow",
-                authorization_route="semantic_grant" if needs_review else "capability_fast_path",
-                argument_provenance=proofs,
+                authorization_route="host_action_policy",
             )
             try:
                 event["handler_invoked"] = True
-                output = self.tools[name]["handler"](copy.deepcopy(arguments))
+                output = tool["handler"](copy.deepcopy(arguments))
+                self.resources.bump(footprint.writes)
+                stamps = self.resources.capture((*footprint.reads, *footprint.writes))
+                ref = self.store.add(output, tool=name, arguments=arguments, resources=stamps, actor=actor)
+                normalized = self.store.entries[ref]["value"]
+                state = "unknown" if self._failed(normalized) else "committed"
+                self.journal.finish(operation_id, state, normalized, ref, stamps)
+                event.update(
+                    status="runtime_error" if state == "unknown" else "executed", outcome=state, evidence_id=ref
+                )
+                return self.store.read(actor, ref)
             except BaseException as exc:
-                cap["state"] = "unknown"
-                self.version += 1
-                self.cache.clear()
-                event.update(status="handler_exception", outcome="unknown", error_type=type(exc).__name__)
-                self.receipts.append(dict(capability_id=cap["id"], outcome="unknown", version=self.version))
+                row = self.journal.operation(operation_id)
+                if row["state"] == "dispatched":
+                    self.resources.bump(footprint.writes)
+                    self.journal.finish(operation_id, "unknown")
+                event.update(status="handler_or_receipt_exception", outcome="unknown", error_type=type(exc).__name__)
                 raise
-            failed = isinstance(output, dict) and (
-                bool(output.get("error")) or output.get("ok") is False or output.get("success") is False
-            )
-            self.version += 1
-            self.cache.clear()
-            try:
-                ref = self.store.add(output, tool=name, arguments=arguments, version=self.version, actor=actor)
-            except BaseException as exc:
-                cap["state"] = "unknown"
-                event.update(status="receipt_exception", outcome="unknown", error_type=type(exc).__name__)
-                self.receipts.append(dict(capability_id=cap["id"], outcome="unknown", version=self.version))
-                raise
-            cap.update(state="unknown" if failed else "committed", evidence_id=ref)
-            event.update(status="runtime_error" if failed else "executed", outcome=cap["state"], evidence_id=ref)
-            self.receipts.append(
-                dict(capability_id=cap["id"], outcome=cap["state"], evidence_id=ref, version=self.version)
-            )
-            return self.store.read(actor, ref)
 
-    def reconcile(self, capability_id, outcome):
-        """Host-only attestation hook; never exposed as an agent tool.
-
-        Caller must establish the actual external outcome. This does not infer
-        success from a model answer. Unknown is sticky until such attestation.
-        """
-        if outcome not in {"not_applied", "committed"}:
-            raise ValueError("A verified outcome is required.")
+    def reconcile(self, operation_id, outcome, result=None):
+        """Trusted host attestation only; this method is never an agent tool."""
         with self.lock:
-            cap = next(c for c in self.capabilities.values() if c["id"] == capability_id)
-            if cap["state"] != "unknown":
-                raise ValueError("Only unknown outcomes need reconciliation.")
-            # A committed outcome without a usable original result is revoked,
-            # never replayed or represented by a fabricated success receipt.
-            cap["state"] = "revoked" if outcome == "committed" else "available"
-            self.version += 1
-            self.cache.clear()
-            self.receipts.append(dict(capability_id=capability_id, outcome=outcome, host_reconciled=True))
+            row = self.journal.operation(operation_id)
+            if row is None or row["state"] != "unknown":
+                raise ValueError("Only unknown operations need host reconciliation.")
+            if outcome not in {"committed", "not_applied"}:
+                raise ValueError("A verified external outcome is required.")
+            if result is not None:
+                result = json.loads(json_snapshot(result))
+                if outcome != "committed" or self._failed(result):
+                    raise ValueError("Only a successful result can attest a committed operation.")
+            self.resources.bump(row["footprint"]["writes"])
+            stamps = self.resources.capture((*row["footprint"]["reads"], *row["footprint"]["writes"]))
+            ref = None
+            if outcome == "committed" and result is not None:
+                ref = self.store.add(
+                    result, tool=row["tool"], arguments=row["arguments"], resources=stamps, actor="agent_0"
+                )
+                result = self.store.entries[ref]["value"]
+            self.journal.reconcile(operation_id, outcome, result, ref, stamps)
 
     def snapshot(self):
-        return copy.deepcopy(
-            dict(
-                task_scope=self.task_scope,
-                capabilities=list(self.capabilities.values()),
-                receipts=self.receipts,
-                policy_events=self.policy_events,
-                provenance=self.store.graph.export(),
-                unresolved=any(c["state"] in {"unknown", "reserved"} for c in self.capabilities.values()),
-            )
-        )
+        with self.lock:
+            return dict(task_scope=self.task_scope, **self.journal.snapshot(), provenance=self.store.graph.export())

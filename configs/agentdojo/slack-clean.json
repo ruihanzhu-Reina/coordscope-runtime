@@ -1,0 +1,8 @@
+{
+  "schema_version": 1,
+  "benchmark": "agentdojo",
+  "task_id": "user_task_2",
+  "model": "deepseek-chat",
+  "policy": "../policies/read-only.json",
+  "options": {"suite": "slack", "version": "v1.2.2", "condition": "clean"}
+}

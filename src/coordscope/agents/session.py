@@ -1,17 +1,17 @@
-"""One root task, fresh isolated agent planners, shared ToolFence-style gateway."""
+"""Host coordinator: model transport, authority and tools stay outside workers."""
 
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 from coordscope.evidence.store import EvidenceStore
-from coordscope.security.compiler import compiler_messages
 from coordscope.security.gateway import GovernedGateway
-from coordscope.security.policy import TaskContract
+from coordscope.security.policy import ActionPolicy
 
-from .interpreter import IsolationError, PlanInterpreter, Value, freeze
+from .interpreter import IsolationError, Value, freeze
 from .prompts import EXTRACT_SYSTEM, PLAN_SYSTEM
+from .worker import run_in_worker, value_from_wire
 
 
 @dataclass(frozen=True)
@@ -22,6 +22,7 @@ class Limits:
     max_delegations: int = 24
     max_loop_items: int = 24
     max_json_chars: int = 1000000
+    worker_timeout_s: int = 120
 
     def __post_init__(self):
         if any(type(v) is not int or v < 1 for v in vars(self).values()):
@@ -38,20 +39,44 @@ class Context:
 
 
 class IsolatedSession:
-    def __init__(self, user_request, tools, specs, completion, limits=None):
+    def __init__(
+        self,
+        user_request,
+        tools,
+        specs,
+        completion,
+        limits=None,
+        *,
+        policy=None,
+        journal_path,
+        task_id,
+        resources=None,
+    ):
         self.user_request, self.completion = user_request, completion
         self.limits = limits or Limits()
         self.roles = {spec.name: spec for spec in specs}
-        self.catalog = {tool["name"]: {k: v for k, v in tool.items() if k != "handler"} for tool in tools}
+        self.catalog = {
+            tool["name"]: {
+                k: v for k, v in tool.items() if k in {"name", "description", "parameters", "returns", "effect"}
+            }
+            for tool in tools
+        }
         assigned = [tool for spec in specs for tool in spec.tool_names]
         if len(self.roles) != len(specs) or len(assigned) != len(set(assigned)) or set(assigned) != set(self.catalog):
             raise ValueError("Roles must uniquely partition the complete tool catalog.")
         self.store = EvidenceStore()
-        self.gateway = GovernedGateway(tools, self.store, TaskContract(user_request), self.review)
+        self.gateway = GovernedGateway(
+            tools,
+            self.store,
+            policy if policy is not None else ActionPolicy.exact([]),
+            journal_path=journal_path,
+            task_id=task_id,
+            user_request=user_request,
+            resources=resources,
+        )
         self.model_calls = self.tokens = self.steps = 0
         self.contexts = {}
-        self.delegations, self.model_events, self.reviews = [], [], []
-        self.review_context = None
+        self.delegations, self.model_events, self.worker_events = [], [], []
         self.stop_reason = "not_started"
 
     def tick(self):
@@ -85,18 +110,6 @@ class IsolatedSession:
             event["status"] = "error"
             raise
 
-    def initialize(self):
-        result = self.complete(
-            "compiler", "policy_compiler", compiler_messages(self.user_request, self.catalog.values())
-        )
-        try:
-            if not isinstance(result, dict) or set(result) != {"actions"}:
-                raise ValueError("Invalid policy document.")
-            self.gateway.initialize(result["actions"])
-        except (ValueError, TypeError, KeyError):
-            self.gateway.initialize([])
-            self.gateway.policy_events.append(dict(event="compiler_invalid", fallback="exact_action_review"))
-
     def plan(self, context, variables):
         packet = dict(
             root_request=self.user_request,
@@ -121,6 +134,45 @@ class IsolatedSession:
     def _validate_context(self, context):
         if self.contexts.get(context.actor) is not context:
             raise IsolationError("Actor context was not issued by this task's host.")
+
+    def _execute_plan(self, context, variables):
+        """Run the fixed interpreter in a fresh process with host-bound RPC."""
+        plan = self.plan(context, variables)
+
+        def dispatch(operation, payload):
+            if operation == "tick":
+                return self.tick()
+            if operation == "tool":
+                values = {key: value_from_wire(value) for key, value in payload["values"].items()}
+                return self.tool(context, payload["name"], values, payload.get("control", ()))
+            if operation == "delegate":
+                values = {key: value_from_wire(value) for key, value in payload["variables"].items()}
+                return self.delegate(
+                    context, payload["role"], payload["instruction"], values, payload.get("control", ())
+                )
+            if operation == "extract":
+                return self.extract(context, payload["instruction"], value_from_wire(payload["value"]))
+            raise IsolationError("Unsupported worker request.")
+
+        event = dict(actor=context.actor, status="starting")
+        self.worker_events.append(event)
+        try:
+            result = run_in_worker(
+                plan=plan,
+                context=asdict(context),
+                variables=variables,
+                roles=tuple(self.roles),
+                limits=asdict(self.limits),
+                dispatch=dispatch,
+                timeout_s=self.limits.worker_timeout_s,
+                max_frame_bytes=self.limits.max_json_chars * 4 + 65536,
+                on_start=lambda pid: event.update(pid=pid, status="running"),
+            )
+            event["status"] = "completed"
+            return result
+        except BaseException:
+            event["status"] = "failed"
+            raise
 
     def delegate(self, parent, role, instruction, variables, control=()):
         self._validate_context(parent)
@@ -147,13 +199,13 @@ class IsolatedSession:
         )
         self.delegations.append(record)
         try:
-            result = PlanInterpreter(self, context, variables).run(self.plan(context, variables))
+            result = self._execute_plan(context, variables)
             # Child answers are data even when the child returned a literal.
             value = self.record(context, "__agent_result__", result.data, result.dependencies)
             self.store.grant(parent.actor, value.dependencies, source_actor=actor)
             record["status"] = "completed"
-            # A handoff must not refresh the original field's version by
-            # replacing its proof with a newly timestamped agent-result record.
+            # Preserve the original field proof across a handoff; wrapping it
+            # must not replace its resource stamps with a newer observation.
             return Value.of(result.data, value.dependencies, result.field)
         except BaseException:
             record["status"] = "failed"
@@ -165,9 +217,25 @@ class IsolatedSession:
         if len(freeze(data)) > self.limits.max_json_chars:
             raise IsolationError("Data value exceeds its bound.")
         ref = self.store.add(
-            data, tool=source, arguments={}, version=self.gateway.version, actor=context.actor, parents=sorted(parents)
+            data,
+            tool=source,
+            arguments={},
+            actor=context.actor,
+            parents=sorted(parents),
+            resources=self._dependency_resources(context.actor, parents),
         )
         return Value.of(data, frozenset(parents) | {ref}, (ref, ""))
+
+    def _dependency_resources(self, actor, refs):
+        stamps = {}
+        for ref in refs:
+            for key, stamp in self.store._row(actor, ref)["resources"].items():
+                if key in stamps and stamps[key] != stamp:
+                    # Conflicting observations cannot be made fresh by merging.
+                    stamps[key] = dict(revision=-1, validator=None, external=False)
+                else:
+                    stamps[key] = stamp
+        return stamps
 
     def extract(self, context, instruction, value):
         self._validate_context(context)
@@ -196,11 +264,7 @@ class IsolatedSession:
         sources = {
             key: dict(evidence_id=value.field[0], path=value.field[1]) for key, value in values.items() if value.field
         }
-        self.review_context = context
-        try:
-            receipt = self.gateway.call(context.actor, tool, arguments, sorted(refs), sources)
-        finally:
-            self.review_context = None
+        receipt = self.gateway.call(context.actor, tool, arguments, sorted(refs), sources)
         if "evidence_id" not in receipt:
             # Raw guard reasons may include external content; keep them data.
             return self.record(context, "__blocked_call__", receipt, refs)
@@ -208,37 +272,13 @@ class IsolatedSession:
         row = self.store._row(context.actor, ref)
         return Value.of(row["value"], refs | {ref}, (ref, ""))
 
-    def review(self, name, arguments, refs):
-        context = self.review_context
-        self._validate_context(context)
-        if len(refs) > 12 or len(freeze(arguments)) > 24000:
-            return "deny", "Action evidence exceeds the bounded review scope."
-        evidence = [self.store.review_slice(context.actor, ref) for ref in refs]
-        messages = self.gateway.contract.review_messages(name, arguments, evidence)
-        packet = json.loads(messages[1]["content"])
-        packet["delegation"] = dict(
-            role=context.role, subtask=context.task, note="Planner-generated subtask is not additional user authority."
-        )
-        messages[1]["content"] = freeze(packet)
-        verdict = self.complete("reviewer", "action_verifier", messages)
-        valid = isinstance(verdict, dict) and verdict.get("decision") in {"allow", "deny"}
-        decision = verdict["decision"] if valid else "deny"
-        reason = str(verdict.get("reason", "Invalid review"))[:1200] if isinstance(verdict, dict) else "Invalid review"
-        self.reviews.append(
-            dict(
-                actor=context.actor, tool=name, decision=decision, evidence_ids=list(refs), version=self.gateway.version
-            )
-        )
-        return decision, reason
-
     def run(self):
         context = Context("orchestrator", "orchestrator", self.user_request, frozenset())
         self.contexts[context.actor] = context
         self.gateway.permit(context.actor, [])
         self.stop_reason = "running"
         try:
-            self.initialize()
-            result = PlanInterpreter(self, context, {}).run(self.plan(context, {}))
+            result = self._execute_plan(context, {})
             self.stop_reason = "completed"
             return result.data if isinstance(result.data, str) else freeze(result.data)
         except BaseException:
@@ -247,17 +287,26 @@ class IsolatedSession:
 
     def snapshot(self):
         return dict(
-            profile="multicamel_governed",
-            implementation="bounded_json_plan_interpreter",
+            profile="host_policy_governed",
+            implementation="process_json_plan_interpreter",
             stop_reason=self.stop_reason,
             model_calls=self.model_calls,
             tokens=self.tokens,
             executed_steps=self.steps,
             delegations=self.delegations,
             model_events=self.model_events,
-            action_reviews=self.reviews,
+            workers=self.worker_events,
             gateway_events=self.gateway.events,
             runtime_governance=self.gateway.snapshot(),
             actual_specialist_count=len({r["role"] for r in self.delegations}),
             specialist_invocations=len(self.delegations),
         )
+
+    def close(self):
+        self.gateway.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        self.close()

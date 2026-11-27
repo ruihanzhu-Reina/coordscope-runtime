@@ -1,16 +1,30 @@
 """Adversarial boundary tests, using scripted completions and controlled tools."""
 
 import json
+import tempfile
+from pathlib import Path
 
 import pytest
 
 from coordscope.agents.interpreter import IsolationError, Value
 from coordscope.agents.roles import SubAgentSpec
 from coordscope.agents.session import IsolatedSession, Limits
+from coordscope.security.policy import ActionPolicy
 from tests.helpers.scripted import Script, agent, call, lit, plan, ref
 
+_sessions = []
 
-def fixture(script, content=None, handler=None, limits=None):
+
+@pytest.fixture(autouse=True)
+def close_test_sessions():
+    yield
+    while _sessions:
+        session = _sessions.pop()
+        session.close()
+        session._test_directory.cleanup()
+
+
+def fixture(script, content=None, handler=None, limits=None, policy=None):
     calls = []
 
     def pay(args):
@@ -20,12 +34,14 @@ def fixture(script, content=None, handler=None, limits=None):
     tools = [
         dict(
             name="read_file",
+            effect="read",
             description="Read a local file",
             parameters=dict(type="object", properties={}),
             handler=lambda args: content if content is not None else {"recipient": "Alice", "amount": 10},
         ),
         dict(
             name="send_money",
+            effect="mutate",
             description="Send money",
             handler=pay,
             parameters=dict(
@@ -39,7 +55,22 @@ def fixture(script, content=None, handler=None, limits=None):
         SubAgentSpec("files", "Read files", ("read_file",)),
         SubAgentSpec("payments", "Make payments", ("send_money",)),
     )
-    return IsolatedSession("Pay Alice 10 once", tools, specs, script, limits), calls
+    folder = tempfile.TemporaryDirectory()
+    session = IsolatedSession(
+        "Pay Alice 10 once",
+        tools,
+        specs,
+        script,
+        limits,
+        policy=policy
+        if policy is not None
+        else ActionPolicy.exact([dict(tool="send_money", arguments=dict(recipient="Alice", amount=10))]),
+        journal_path=Path(folder.name) / "runtime.sqlite",
+        task_id="payment",
+    )
+    session._test_directory = folder
+    _sessions.append(session)
+    return session, calls
 
 
 def read_plan():
@@ -61,7 +92,6 @@ def test_two_roles_preserve_data_without_exposing_it_to_any_planner():
             "files": read_plan(),
             "payments": transfer_plan(),
         },
-        actions=[dict(tool="send_money", arguments=dict(recipient="Alice", amount=10))],
     )
     session, calls = fixture(script, {"note": poison})
     session.run()
@@ -116,7 +146,7 @@ def test_quarantined_model_cannot_mint_a_trusted_task_or_execute_returned_code()
     assert session.delegations == []
 
 
-def test_implicit_branch_assignment_keeps_dependency():
+def test_ambiguous_branch_rebinding_is_rejected_before_execution():
     script = Script(
         {
             "orchestrator": plan(
@@ -133,12 +163,13 @@ def test_implicit_branch_assignment_keeps_dependency():
         }
     )
     session, calls = fixture(script, "attack")
-    with pytest.raises(IsolationError, match="instruction channel"):
+    with pytest.raises(IsolationError, match="binding|assigned|rebind|Single|single"):
         session.run()
     assert calls == []
+    assert session.delegations == []
 
 
-def test_parameter_substitution_blocked_even_when_reviewer_would_allow():
+def test_parameter_substitution_blocked_by_host_policy_without_model_review():
     script = Script(
         {
             "orchestrator": plan(
@@ -148,13 +179,11 @@ def test_parameter_substitution_blocked_even_when_reviewer_would_allow():
             "files": read_plan(),
             "payments": transfer_plan(ref("file", "recipient")),
         },
-        actions=[dict(tool="send_money", arguments=dict(recipient="Alice", amount=10))],
-        review="allow",
     )
     session, calls = fixture(script, {"recipient": "Mallory"})
     session.run()
     assert calls == []
-    assert not session.reviews
+    assert not any(r["kind"] in {"reviewer", "compiler"} for r in script.requests)
     assert session.gateway.events[-1]["status"] == "blocked"
 
 
@@ -167,14 +196,13 @@ def test_same_action_across_fresh_specialist_calls_does_not_reset_budget():
             ),
             "payments": transfer_plan(),
         },
-        review="allow",
     )
     session, calls = fixture(script)
     session.run()
     assert len(session.delegations) == 2
     assert calls == [dict(recipient="Alice", amount=10)]
     assert session.gateway.events[-1]["status"] == "already_applied"
-    assert len(session.gateway.receipts) == 1
+    assert len(session.gateway.snapshot()["receipts"]) == 1
 
 
 def test_cross_role_tool_and_unreachable_invalid_branch_rejected_before_execution():
@@ -196,10 +224,9 @@ def test_cross_role_tool_and_unreachable_invalid_branch_rejected_before_executio
 def test_unknown_effect_blocks_fresh_agent_retries():
     script = Script(
         {
-            "orchestrator": plan(agent("payments", lit("Pay")), agent("payments", lit("Pay"))),
+            "orchestrator": plan(agent("payments", lit("Pay"), out="first"), agent("payments", lit("Pay"))),
             "payments": transfer_plan(),
         },
-        review="allow",
     )
     session, calls = fixture(script, handler=lambda args: {"error": "timeout after possible debit"})
     session.run()
@@ -208,7 +235,7 @@ def test_unknown_effect_blocks_fresh_agent_retries():
     assert session.gateway.events[-1]["status"] == "blocked"
 
 
-def test_data_processing_keeps_lineage_through_child_and_into_review():
+def test_data_processing_keeps_lineage_through_child_and_into_execution():
     script = Script(
         {
             "orchestrator": plan(
@@ -220,15 +247,17 @@ def test_data_processing_keeps_lineage_through_child_and_into_review():
             "payments": transfer_plan(ref("recipient")),
         },
         extract="Alice",
-        review="allow",
     )
     session, calls = fixture(script)
     session.run()
     assert len(calls) == 1
-    review = next(r for r in script.requests if r["kind"] == "reviewer")
-    packet = json.loads(review["messages"][-1]["content"])
-    assert packet["user_request"] == "Pay Alice 10 once"
-    assert {e["tool"] for e in packet["evidence"]} >= {"read_file", "__quarantined_result__", "__agent_result__"}
+    event = session.gateway.events[-1]
+    assert {session.store.entries[ref]["tool"] for ref in event["evidence_ids"]} >= {
+        "read_file",
+        "__quarantined_result__",
+        "__agent_result__",
+    }
+    assert not any(r["kind"] in {"reviewer", "compiler"} for r in script.requests)
 
 
 def test_preplanned_branch_and_iteration_work_without_replanning():
@@ -236,38 +265,41 @@ def test_preplanned_branch_and_iteration_work_without_replanning():
         {
             "orchestrator": plan(
                 agent("files", lit("Read"), out="file"),
+                agent("payments", lit("Pay Alice 10 for eligible rows"), {"rows": ref("file")}),
+            ),
+            "payments": plan(
                 dict(
                     op="for_each",
-                    items=ref("file"),
+                    items=ref("rows"),
                     item="row",
                     steps=[
                         dict(
                             op="if",
                             condition={"not": {"eq": [ref("row", "recipient"), lit("Mallory")]}},
-                            then=[agent("payments", lit("Pay Alice 10"))],
+                            then=[call("send_money", {"recipient": lit("Alice"), "amount": lit(10)})],
                             **{"else": []},
                         )
                     ],
                 ),
             ),
             "files": read_plan(),
-            "payments": transfer_plan(),
         },
-        review="allow",
     )
     session, calls = fixture(script, [{"recipient": "Mallory"}, {"recipient": "Alice"}])
     session.run()
     assert len(calls) == 1
     assert len([r for r in script.requests if r["kind"] == "planner" and r["actor"] == "orchestrator"]) == 1
-    review = next(r for r in script.requests if r["kind"] == "reviewer")
-    evidence = json.loads(review["messages"][-1]["content"])["evidence"]
-    assert {e["tool"] for e in evidence} >= {"read_file", "__agent_result__"}
+    refs = session.gateway.events[-1]["evidence_ids"]
+    assert {session.store.entries[ref]["tool"] for ref in refs} >= {"read_file", "__agent_result__"}
     assert session.delegations[-1]["evidence_ids"]
 
 
 def test_delegation_budget_and_unknown_expressions_fail_closed():
     script = Script(
-        {"orchestrator": plan(agent("files", lit("Read")), agent("files", lit("Read"))), "files": read_plan()}
+        {
+            "orchestrator": plan(agent("files", lit("Read"), out="first"), agent("files", lit("Read"))),
+            "files": read_plan(),
+        }
     )
     session, calls = fixture(script, limits=Limits(max_delegations=1))
     with pytest.raises(IsolationError, match="Delegation budget"):

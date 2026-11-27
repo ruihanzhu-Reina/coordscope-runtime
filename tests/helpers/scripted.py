@@ -24,19 +24,15 @@ def call(tool, args=None, out="result"):
 
 
 class Script:
-    def __init__(self, plans, *, actions=(), extract=None, review="deny"):
-        self.plans, self.actions, self.extract, self.review = plans, list(actions), extract, review
+    def __init__(self, plans, *, extract=None):
+        self.plans, self.extract = plans, extract
         self.requests = []
 
     def __call__(self, kind, actor, messages, remaining):
         self.requests.append(dict(kind=kind, actor=actor, messages=messages))
-        if kind == "compiler":
-            return {"actions": self.actions}, 1
         if kind == "planner":
             role = json.loads(messages[-1]["content"])["role"]
             return self.plans[role], 1
-        if kind == "reviewer":
-            return {"decision": self.review, "reason": "scripted exact-action decision"}, 1
         if kind == "quarantined":
             return json.dumps(self.extract), 1
         raise AssertionError(kind)

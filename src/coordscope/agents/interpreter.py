@@ -66,6 +66,15 @@ class PlanInterpreter:
         self.variables = dict(variables)
         self.seen = set(context.dependencies).union(*(v.dependencies for v in variables.values()))
         self._validation_nodes = 0
+        self._bindings = set(variables)
+
+    def _bind(self, variable):
+        variable = name(variable)
+        if variable in self._bindings:
+            raise IsolationError(
+                "Plan bindings are single-assignment; inputs, outputs and loop items cannot be overwritten."
+            )
+        self._bindings.add(variable)
 
     def _node(self, depth):
         self._validation_nodes += 1
@@ -141,13 +150,13 @@ class PlanInterpreter:
                 self.validate_steps(step["else"], depth + 1)
             elif op == "for_each":
                 keys(step, {"op", "items", "item", "steps"})
-                name(step["item"])
+                self._bind(step["item"])
                 self.validate_expr(step["items"], depth + 1)
                 self.validate_steps(step["steps"], depth + 1)
             else:
                 raise IsolationError("Unsupported plan statement.")
             if "out" in step:
-                name(step["out"])
+                self._bind(step["out"])
 
     def evaluate(self, expr):
         if "literal" in expr:
@@ -214,7 +223,10 @@ class PlanInterpreter:
                 args = {key: self.evaluate(expr) for key, expr in step["args"].items()}
                 value = self.session.tool(self.context, step["name"], args, control)
             elif op == "agent":
-                instruction = self.evaluate(step["message"]).instruction()
+                message = self.evaluate(step["message"])
+                # Even a literal can be selected by untrusted branch/loop data.
+                # That control dependency must not become a child planner task.
+                instruction = Value.of(message.data, message.dependencies | frozenset(control)).instruction()
                 variables = {key: self.evaluate(expr) for key, expr in step["variables"].items()}
                 value = self.session.delegate(self.context, step["name"], instruction, variables, control)
             else:

@@ -24,7 +24,7 @@ class ProvenanceChecks(unittest.TestCase):
             "origin": "USER",
             "trust": "authority",
         }
-        self.ref = self.store.add(self.data, tool="search_contacts", arguments=self.args, version=2, actor="agent_0")
+        self.ref = self.store.add(self.data, tool="search_contacts", arguments=self.args, actor="agent_0")
         self.source = SourceRef(self.ref, "/contacts/0/email")
 
     def test_exact_source_field_and_host_requirements(self):
@@ -32,7 +32,6 @@ class ProvenanceChecks(unittest.TestCase):
             "agent_0",
             self.source.to_dict(),
             "alice@example.test",
-            current_version=2,
             source_tool="search_contacts",
             source_arguments=self.args,
         )
@@ -56,29 +55,26 @@ class ProvenanceChecks(unittest.TestCase):
             )
         self.assertEqual(self.store.read("agent_0", self.ref)["origin"], "external_tool_result")
 
-    def test_failed_missing_invisible_and_stale_evidence_fail_closed(self):
+    def test_failed_missing_and_invisible_evidence_fail_closed(self):
         failed = self.store.add(
             {"error": "lookup failed", "email": "alice@example.test"},
             tool="search_contacts",
             arguments=self.args,
-            version=2,
             actor="agent_0",
             success=True,
         )
         cases = [
-            ("agent_0", SourceRef(failed, "/email"), 2),
-            ("agent_1", self.source, 2),
-            ("agent_0", SourceRef("e9999", "/email"), 2),
-            ("agent_0", self.source, 3),
-            ("agent_0", self.source, True),
+            ("agent_0", SourceRef(failed, "/email")),
+            ("agent_1", self.source),
+            ("agent_0", SourceRef("e9999", "/email")),
         ]
-        for actor, ref, version in cases:
-            with self.subTest(actor=actor, ref=ref, version=version), self.assertRaises(ValueError):
-                self.store.resolve(actor, ref, "alice@example.test", current_version=version)
+        for actor, ref in cases:
+            with self.subTest(actor=actor, ref=ref), self.assertRaises(ValueError):
+                self.store.resolve(actor, ref, "alice@example.test")
         self.assertEqual(self.store.entries[failed]["status"], "failed")
 
     def test_host_can_mark_opaque_failure(self):
-        ref = self.store.add("unavailable", tool="lookup", arguments={}, version=0, actor="agent_0", success=False)
+        ref = self.store.add("unavailable", tool="lookup", arguments={}, actor="agent_0", success=False)
         with self.assertRaises(ValueError):
             self.store.resolve("agent_0", SourceRef(ref), "unavailable")
 
@@ -139,7 +135,7 @@ class ProvenanceChecks(unittest.TestCase):
         self.assertIn(self.ref, self.store.visible["agent_1"])
 
     def test_parent_reference_needs_existing_actor_visible_evidence(self):
-        kwargs = dict(tool="lookup", arguments={}, version=2, actor="agent_1")
+        kwargs = dict(tool="lookup", arguments={}, actor="agent_1")
         for parent in (self.ref, "missing"):
             with self.subTest(parent=parent), self.assertRaises(ValueError):
                 self.store.add({"ok": True}, parents=[parent], **kwargs)
@@ -150,17 +146,9 @@ class ProvenanceChecks(unittest.TestCase):
         self.assertEqual(self.store.graph.events[-1]["target_actor"], "agent_0")
         self.assertIn(child, self.store.visible["agent_0"])
 
-    def test_recorded_derivation_is_verified_before_publication(self):
-        with self.assertRaises(ValueError):
-            self.store.record_derivation("agent_0", self.source, "attacker@example.test")
-        self.assertEqual(self.store.graph.events, [])
-        self.store.record_derivation("agent_0", self.source, "alice@example.test", current_version=2)
-        self.assertEqual(self.store.graph.events[-1]["kind"], "field_resolution")
-        self.assertEqual(self.store.graph.events[-1]["proof"]["trust"], "data_not_authority")
-
     def test_json_pointer_escaped_keys_arrays_and_empty_key(self):
         value = {"a/b": {"~name": [{"": "target"}]}}
-        ref = self.store.add(value, tool="lookup", arguments={}, version=0, actor="agent_0")
+        ref = self.store.add(value, tool="lookup", arguments={}, actor="agent_0")
         proof = self.store.resolve("agent_0", SourceRef(ref, "/a~1b/~0name/0/"), "target")
         self.assertEqual(proof["value"], "target")
 
@@ -187,28 +175,26 @@ class ProvenanceChecks(unittest.TestCase):
 
     def test_json_text_remains_scalar_and_cannot_invent_lineage(self):
         payload = '{"email":"alice@example.test"}'
-        ref = self.store.add(payload, tool="lookup", arguments={}, version=0, actor="agent_0")
+        ref = self.store.add(payload, tool="lookup", arguments={}, actor="agent_0")
         with self.assertRaises(ValueError):
             self.store.resolve("agent_0", SourceRef(ref, "/email"), "alice@example.test")
         self.assertEqual(self.store.resolve("agent_0", SourceRef(ref), payload)["value"], payload)
 
     def test_pydantic_list_return_is_structured_and_frozen(self):
         contact = Contact(name="Alice", email="alice@example.test")
-        ref = self.store.add([contact], tool="lookup", arguments={}, version=0, actor="agent_0")
+        ref = self.store.add([contact], tool="lookup", arguments={}, actor="agent_0")
         contact.email = "attacker@example.test"
         self.assertEqual(
             self.store.resolve("agent_0", SourceRef(ref, "/0/email"), "alice@example.test")["value"],
             "alice@example.test",
         )
 
-    def test_full_snapshot_hash_and_selected_slice_remain_compatible(self):
+    def test_full_snapshot_hash_and_bounded_preview(self):
         payload = "x" * 10000 + "decisive"
-        ref = self.store.add(payload, tool="lookup", arguments={}, version=0, actor="agent_0")
-        self.store.read("agent_0", ref, 10000, 100, select=True)
-        result = self.store.review_slice("agent_0", ref)
+        ref = self.store.add(payload, tool="lookup", arguments={}, actor="agent_0")
+        result = self.store.read("agent_0", ref, 10000, 100)
         self.assertEqual(result["content"], "decisive")
         self.assertEqual(result["sha256"], hashlib.sha256(payload.encode()).hexdigest())
-        self.assertEqual(result["slice_sha256"], hashlib.sha256(b"decisive").hexdigest())
         self.assertNotIn("value", self.store.index("agent_0")[-1])
 
 

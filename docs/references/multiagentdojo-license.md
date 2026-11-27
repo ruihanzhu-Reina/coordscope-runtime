@@ -1,6 +1,6 @@
 # MultiAgentDojo attribution
 
-`src/coordscope/integrations/agentdojo/partitions.py` reuses `SUITE_PARTITIONS` from
+`src/coordscope/benchmarks/agentdojo/partitions.py` reuses `SUITE_PARTITIONS` from
 https://github.com/james-pete/multiagentdojo/blob/e71647382155dc6949d6ccf9a9d7ec7cf429b856/src/agentdojo/agent_pipeline/multi_agent.py
 
 Research reference: [Can CaMeLs Talk? Securing Multi-Agent Systems Against
