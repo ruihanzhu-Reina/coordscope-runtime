@@ -1,8 +1,8 @@
 """Reviewed tool effects for the pinned AgentDojo tools.
 
-This is an authority allowlist, not a name classifier. Resource domains are
-coarse audit labels, not complete read/write footprints or cache dependencies.
-Arguments remain sensitive even when their names sound harmless.
+This pinned catalog belongs to the adapter. Resource domains are conservative
+footprint defaults, not complete per-object dependencies. The core accepts
+explicit host metadata and does not classify tools by their names.
 """
 
 from dataclasses import dataclass
@@ -15,18 +15,7 @@ Effect = Literal["read", "navigate", "send", "mutate", "consume", "unknown"]
 @dataclass(frozen=True)
 class ToolSpec:
     effect: Effect = "unknown"
-    worker_allowed: bool = False
-    argument_sensitivity: Literal["all"] = "all"
     resource_domain: str = "unknown"
-
-    @property
-    def side_effect(self) -> bool:
-        """Unknown and observable reads must never be treated as pure reads."""
-        return self.effect != "read"
-
-    def is_argument_sensitive(self, name: str) -> bool:
-        """Every supplied argument matters, including unrecognized arguments."""
-        return True
 
 
 # Migrated without effect changes from action_policy's manually reviewed table.
@@ -98,7 +87,7 @@ def _build_manifest():
         for name in names.split():
             if name in specs:
                 raise ValueError(f"Duplicate reviewed tool: {name}")
-            specs[name] = ToolSpec(effect=kind, worker_allowed=kind == "read", resource_domain=domain)
+            specs[name] = ToolSpec(effect=kind, resource_domain=domain)
     return MappingProxyType(specs)
 
 
@@ -113,12 +102,3 @@ def tool_spec(name: str) -> ToolSpec:
 
 def effect(name: str) -> Effect:
     return tool_spec(name).effect
-
-
-PURE_READS = frozenset(name for name, spec in TOOL_MANIFEST.items() if spec.effect == "read")
-NAVIGATION = frozenset(name for name, spec in TOOL_MANIFEST.items() if spec.effect == "navigate")
-SEND = frozenset(name for name, spec in TOOL_MANIFEST.items() if spec.effect == "send")
-MUTATE = frozenset(name for name, spec in TOOL_MANIFEST.items() if spec.effect == "mutate")
-CONSUME = frozenset(name for name, spec in TOOL_MANIFEST.items() if spec.effect == "consume")
-
-__all__ = ["CONSUME", "MUTATE", "NAVIGATION", "PURE_READS", "SEND", "TOOL_MANIFEST", "ToolSpec", "effect", "tool_spec"]

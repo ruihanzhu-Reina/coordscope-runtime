@@ -88,7 +88,7 @@ class ProvenanceGraph:
     def events(self):
         return [json.loads(row) for row in self._events]
 
-    def add_evidence(self, evidence_id, *, actor, tool, version, sha256, parent_ids=()):
+    def add_evidence(self, evidence_id, *, actor, tool, resources, sha256, parent_ids=()):
         parents = tuple(parent_ids)
         if evidence_id in self._nodes or any(parent not in self._nodes for parent in parents):
             raise ValueError("Duplicate evidence or unknown provenance parent.")
@@ -96,7 +96,7 @@ class ProvenanceGraph:
             evidence_id=evidence_id,
             actor=actor,
             tool=tool,
-            environment_version=version,
+            resources=resources,
             sha256=sha256,
             parent_ids=list(parents),
             origin="external_tool_result",
@@ -114,19 +114,6 @@ class ProvenanceGraph:
             source_actor=source_actor,
             target_actor=target_actor,
             evidence_ids=list(refs),
-            trust="data_not_authority",
-        )
-        self._events.append(json_snapshot(event))
-        return json.loads(self._events[-1])
-
-    def record_resolution(self, actor, proof):
-        if proof["evidence_id"] not in self._nodes:
-            raise ValueError("Unknown evidence in provenance resolution.")
-        event = dict(
-            event_id=f"p{len(self._events) + 1:04d}",
-            kind="field_resolution",
-            actor=actor,
-            proof=proof,
             trust="data_not_authority",
         )
         self._events.append(json_snapshot(event))

@@ -7,17 +7,33 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
+        python: ['3.11', '3.12']
     runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+      - run: uv sync --frozen --extra agentdojo
+      - run: uv run ruff check src tests examples
+      - run: uv run ruff format --check src tests examples
+      - run: uv run pytest
+      - run: uv run coordscope check
+      - run: uv run coordscope check --benchmark agentdojo
+      - run: uv run python examples/offline_payment.py
+      - run: uv build
+  core-wheel:
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
         with:
           python-version: '3.12'
           enable-cache: true
-      - run: uv sync --frozen --extra benchmark
-      - run: uv run ruff check src tests examples
-      - run: uv run ruff format --check src tests examples
-      - run: uv run pytest
-      - run: uv run coordscope check
-      - run: uv run python examples/offline_payment.py
       - run: uv build
+      - run: uv venv .wheel-env
+      - run: uv pip install --python .wheel-env/bin/python dist/*.whl
+      - run: .wheel-env/bin/python -I -c "import importlib.util; assert importlib.util.find_spec('agentdojo') is None"
+      - run: .wheel-env/bin/python -I -m coordscope check
+      - run: .wheel-env/bin/python -I examples/offline_payment.py

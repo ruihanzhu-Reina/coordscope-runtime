@@ -1,4 +1,4 @@
-"""Episode-local immutable JSON evidence and access-controlled field proofs."""
+"""Immutable evidence, resource stamps and durable, host-owned access records."""
 
 import hashlib
 import json
@@ -35,8 +35,35 @@ class EvidenceStore:
         self.preview_chars = preview_chars
         self._snapshots = {}
         self._visible = {"agent_0": set()}
-        self.selected = {}
         self.graph = ProvenanceGraph()
+        self.journal = None
+
+    def attach_journal(self, journal):
+        """Bind to the task ledger before publishing any evidence.
+
+        The journal authenticates task identity and policy before this state is
+        loaded. Stored source fields remain data, never execution authority.
+        """
+        if self.journal is not None or self._snapshots:
+            raise ValueError("Evidence journal must be attached before use.")
+        state = journal.load_evidence()
+        if state:
+            self._snapshots = dict(state["snapshots"])
+            self._visible = {actor: set(refs) for actor, refs in state["visible"].items()}
+            self.graph._nodes = dict(state["nodes"])
+            self.graph._events = list(state["events"])
+        self.journal = journal
+
+    def _persist(self):
+        if self.journal is not None:
+            self.journal.save_evidence(
+                dict(
+                    snapshots=self._snapshots,
+                    visible={actor: sorted(refs) for actor, refs in self._visible.items()},
+                    nodes=self.graph._nodes,
+                    events=self.graph._events,
+                )
+            )
 
     @property
     def entries(self):
@@ -56,7 +83,7 @@ class EvidenceStore:
         # Do not duplicate the full payload outside the bounded preview.
         return {key: value for key, value in row.items() if key not in {"content", "value"}}
 
-    def add(self, value, *, tool, arguments, version, actor, success=None, parents=(), parent_ids=()):
+    def add(self, value, *, tool, arguments, actor, resources=None, success=None, parents=(), parent_ids=()):
         """Host-only tool receipt. Strings stay strings, including JSON text.
 
         An explicit failure cannot be overridden by success=True. Parent links
@@ -64,8 +91,6 @@ class EvidenceStore:
         """
         if not isinstance(tool, str) or not tool or not isinstance(actor, str) or not actor:
             raise ValueError("Evidence requires a host tool and actor.")
-        if isinstance(version, bool) or not isinstance(version, int) or version < 0:
-            raise ValueError("Evidence version must be a non-negative integer.")
         if success is not None and type(success) is not bool:
             raise ValueError("Evidence success must be a boolean.")
         if isinstance(parents, (str, bytes)) or isinstance(parent_ids, (str, bytes)):
@@ -74,6 +99,9 @@ class EvidenceStore:
         for parent in refs:
             self._row(actor, parent)
         structured = json.loads(json_snapshot(value))
+        resources = json.loads(json_snapshot(resources or {}))
+        if not isinstance(resources, dict):
+            raise ValueError("Evidence resource stamps must be an object.")
         frozen_arguments = json.loads(json_snapshot(arguments))
         if not isinstance(frozen_arguments, dict):
             raise ValueError("Evidence tool arguments must be a JSON object.")
@@ -89,7 +117,7 @@ class EvidenceStore:
             trust="data_not_authority",
             tool=tool,
             arguments=frozen_arguments,
-            environment_version=version,
+            resources=resources,
             actor=actor,
             sha256=hashlib.sha256(content.encode()).hexdigest(),
             content=content,
@@ -100,12 +128,13 @@ class EvidenceStore:
             parent_ids=list(refs),
         )
         snapshot = json_snapshot(row)
-        self.graph.add_evidence(ref, actor=actor, tool=tool, version=version, sha256=row["sha256"], parent_ids=refs)
+        self.graph.add_evidence(ref, actor=actor, tool=tool, resources=resources, sha256=row["sha256"], parent_ids=refs)
         self._snapshots[ref] = snapshot
         self._visible.setdefault(actor, set()).add(ref)
         self._visible["agent_0"].add(ref)
         if actor != "agent_0":
             self.graph.record_handoff(actor, "agent_0", [ref])
+        self._persist()
         return ref
 
     def grant(self, actor, refs, *, source_actor="agent_0"):
@@ -117,13 +146,12 @@ class EvidenceStore:
         self._visible.setdefault(actor, set()).update(refs)
         if refs:
             self.graph.record_handoff(source_actor, actor, refs)
+        self._persist()
 
-    def read(self, actor, ref, start=0, limit=None, *, select=False):
+    def read(self, actor, ref, start=0, limit=None):
         row = self._row(actor, ref)
         limit = self.preview_chars if limit is None else max(1, min(int(limit), 12000))
         start = max(0, int(start))
-        if select:
-            self.selected[(actor, ref)] = (start, limit)
         return self._metadata(row) | dict(
             content=row["content"][start : start + limit],
             start=start,
@@ -131,16 +159,10 @@ class EvidenceStore:
             more=start + limit < len(row["content"]),
         )
 
-    def review_slice(self, actor, ref):
-        start, limit = self.selected.get((actor, ref), (0, 4000))
-        result = self.read(actor, ref, start=start, limit=limit)
-        result["slice_sha256"] = hashlib.sha256(result["content"].encode()).hexdigest()
-        return result
-
     def index(self, actor):
         return [self._metadata(self._row(actor, ref)) for ref in sorted(self._visible.get(actor, set()))]
 
-    def resolve(self, actor, ref, value, current_version=None, source_tool=None, source_arguments=None):
+    def resolve(self, actor, ref, value, source_tool=None, source_arguments=None):
         """Validate an exact original field, returning a data-only proof.
 
         Source restrictions come from host policy, not the reference's labels.
@@ -150,10 +172,6 @@ class EvidenceStore:
         row = self._row(actor, ref.evidence_id)
         if not row["success"]:
             raise ValueError("Failed evidence cannot bind action parameters.")
-        if current_version is not None and (
-            type(current_version) is not int or row["environment_version"] != current_version
-        ):
-            raise ValueError("Evidence belongs to a different environment version.")
         if source_tool is not None and row["tool"] != source_tool:
             raise ValueError("Evidence does not match the required source tool.")
         if source_arguments is not None and json_snapshot(row["arguments"]) != json_snapshot(source_arguments):
@@ -167,16 +185,10 @@ class EvidenceStore:
             value=original,
             tool=row["tool"],
             arguments=row["arguments"],
-            environment_version=row["environment_version"],
+            resources=row["resources"],
             sha256=row["sha256"],
             value_sha256=row["value_sha256"],
             origin=row["origin"],
             trust="data_not_authority",
             verified=True,
         )
-
-    def record_derivation(self, actor, ref, value, **requirements):
-        """Record a host-verified field resolution, not arbitrary model lineage."""
-        proof = self.resolve(actor, ref, value, **requirements)
-        self.graph.record_resolution(actor, proof)
-        return proof

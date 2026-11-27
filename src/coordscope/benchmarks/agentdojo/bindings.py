@@ -1,12 +1,13 @@
 """Bind the caller's real environment and preserve the official execution trace."""
 
+import hashlib
 import json
 from typing import Any
 
 from agentdojo.functions_runtime import Env, FunctionCall, FunctionsRuntime
 from agentdojo.types import ChatAssistantMessage, ChatMessage, ChatUserMessage, text_content_block_from_string
 
-from coordscope.security.manifest import tool_spec
+from .manifest import tool_spec
 
 
 def bind_tool(runtime: FunctionsRuntime, env: Env, function: Any, *, observer=None) -> dict[str, Any]:
@@ -37,8 +38,42 @@ def bind_tool(runtime: FunctionsRuntime, env: Env, function: Any, *, observer=No
         "description": function.description,
         "parameters": schema,
         "handler": handler,
-        "side_effect": tool_spec(function.name).side_effect,
+        "effect": tool_spec(function.name).effect,
+        "resource_domain": tool_spec(function.name).resource_domain,
     }
+
+
+def environment_revisions(env):
+    """Observe native state by domain without reading task answers or judges.
+
+    These local hashes catch out-of-band changes to this environment. They are
+    observations, not an atomic remote If-Match operation. Domains are a safe
+    fallback; adapters can provide narrower object footprints when justified.
+    """
+    domains = {
+        "banking": ("bank_account",),
+        "account": ("user_account",),
+        "files": ("cloud_drive", "filesystem"),
+        "email": ("inbox",),
+        "calendar": ("calendar",),
+        "slack": ("slack",),
+        "web": ("web",),
+        "travel": ("hotels", "restaurants", "car_rental", "flights", "user", "reservation"),
+    }
+
+    def revision(key):
+        domain = key.removeprefix("domain:")
+        fields = {name: getattr(env, name) for name in domains.get(domain, ()) if hasattr(env, name)}
+        if not fields:
+            return None
+        payload = {
+            name: value.model_dump(mode="json") if hasattr(value, "model_dump") else value
+            for name, value in fields.items()
+        }
+        serialized = json.dumps(payload, sort_keys=True, ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+        return hashlib.sha256(serialized.encode()).hexdigest()
+
+    return revision
 
 
 def _text_blocks(value: Any) -> list[dict[str, str]]:
