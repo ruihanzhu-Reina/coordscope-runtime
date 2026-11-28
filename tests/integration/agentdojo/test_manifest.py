@@ -1,7 +1,7 @@
 import pytest
 from agentdojo.task_suite.load_suites import get_suites
 
-from coordscope.security.manifest import TOOL_MANIFEST, effect, tool_spec
+from teampermit.security.manifest import TOOL_MANIFEST, effect, tool_spec
 
 
 def test_every_official_tool_has_an_explicit_effect():

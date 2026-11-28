@@ -2,14 +2,14 @@
 
 ## AgentDojo benchmark
 
-The source under `third_party/agentdojo` is preserved from the CoordScope checkout
+The source under `third_party/agentdojo` is preserved from the TeamPermit checkout
 at `f0a3ba02ccaece21491301d7fb8fec950644575f`. Its MIT license and original copyright
 holders are retained in `third_party/agentdojo/LICENSE`. The original root MIT
 license is also retained; migration does not replace the original copyright.
 
 ## MultiAgentDojo role partitions
 
-`src/coordscope/integrations/agentdojo/partitions.py` derives its role/tool data from
+`src/teampermit/integrations/agentdojo/partitions.py` derives its role/tool data from
 `james-pete/multiagentdojo` commit `e71647382155dc6949d6ccf9a9d7ec7cf429b856`.
 The full notice is in `docs/references/multiagentdojo-license.md`.
 

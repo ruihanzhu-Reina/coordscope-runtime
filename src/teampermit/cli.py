@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(prog="coordscope")
+    parser = argparse.ArgumentParser(prog="teampermit")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("check", help="Check package imports and native role coverage without API calls")
     run = commands.add_parser("run", help="Run one real benchmark episode (uses the configured provider)")
@@ -24,7 +24,7 @@ def main(argv=None):
     summary.add_argument("results", type=Path, nargs="+")
     args = parser.parse_args(argv)
     if args.command == "summarize":
-        from coordscope.evaluation.metrics import summarize
+        from teampermit.evaluation.metrics import summarize
 
         rows = [json.loads(path.read_text(encoding="utf-8")) for path in args.results]
         print(json.dumps(summarize(rows), ensure_ascii=False, indent=2))
@@ -32,8 +32,8 @@ def main(argv=None):
     if args.command == "check":
         from agentdojo.task_suite.load_suites import get_suite
 
-        from coordscope.agents.session import IsolatedSession
-        from coordscope.integrations.agentdojo.partitions import match_partition
+        from teampermit.agents.session import IsolatedSession
+        from teampermit.integrations.agentdojo.partitions import match_partition
 
         coverage = {}
         for name in ("banking", "slack", "travel", "workspace"):
@@ -44,6 +44,6 @@ def main(argv=None):
         return 0
     if (args.clean and args.injection_task) or (args.attack and not args.injection_task):
         parser.error("Use --clean alone, or --attack together with --injection-task")
-    from coordscope.evaluation.runner import run_episode
+    from teampermit.evaluation.runner import run_episode
 
     return run_episode(args)

@@ -2,8 +2,8 @@
 
 import json
 
-from coordscope.agents.roles import SubAgentSpec
-from coordscope.agents.session import IsolatedSession
+from teampermit.agents.roles import SubAgentSpec
+from teampermit.agents.session import IsolatedSession
 
 
 def run_demo():

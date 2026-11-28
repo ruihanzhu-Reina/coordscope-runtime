@@ -10,8 +10,8 @@ from agentdojo.functions_runtime import FunctionsRuntime
 from agentdojo.task_suite.load_suites import get_suite
 from agentdojo.task_suite.task_suite import functions_stack_trace_from_messages
 
-from coordscope.integrations.agentdojo.partitions import SUITE_PARTITIONS, match_partition
-from coordscope.integrations.agentdojo.pipeline import MultiCaMeLGovernedPipeline
+from teampermit.integrations.agentdojo.partitions import SUITE_PARTITIONS, match_partition
+from teampermit.integrations.agentdojo.pipeline import MultiCaMeLGovernedPipeline
 from tests.helpers.scripted import Script, agent, call, lit, plan, ref
 
 
@@ -68,7 +68,7 @@ def test_native_two_agent_execution_preserves_injected_environment_and_actual_tr
     assert pipeline.mock_used is True
     assert all(poison not in json.dumps(r) for r in script.requests if r["kind"] in {"planner", "compiler"})
     assert any(poison in json.dumps(r) for r in script.requests if r["kind"] == "quarantined")
-    assert extra["coordscope_metadata"]["runtime_governance"]["receipts"]
+    assert extra["teampermit_metadata"]["runtime_governance"]["receipts"]
 
 
 def test_official_task_runner_uses_same_interface_without_goal_access():

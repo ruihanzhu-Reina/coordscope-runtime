@@ -13,8 +13,8 @@ from agentdojo.functions_runtime import EmptyEnv
 from agentdojo.logging import Logger
 from pydantic import TypeAdapter
 
-from coordscope.agents.session import IsolatedSession, Limits
-from coordscope.models.client import IsolatedClient
+from teampermit.agents.session import IsolatedSession, Limits
+from teampermit.models.client import IsolatedClient
 
 from .bindings import bind_tool, build_messages
 from .partitions import match_partition
@@ -23,7 +23,7 @@ PARTITION_COMMIT = "e71647382155dc6949d6ccf9a9d7ec7cf429b856"
 
 
 class MultiCaMeLGovernedPipeline(BasePipelineElement):
-    name = "coordscope-multicamel-governed"
+    name = "teampermit-multicamel-governed"
 
     def __init__(self, *, model=None, completion=None, partitions=None, limits=None):
         self.partitions = partitions
@@ -37,7 +37,7 @@ class MultiCaMeLGovernedPipeline(BasePipelineElement):
         self.last_run_metadata, self.last_trace_events = {}, []
         self.seed = 0
         self._completion = completion
-        from coordscope.models.providers import provider_config
+        from teampermit.models.providers import provider_config
 
         self.model = provider_config(model).model
         # Deterministic injected callbacks are only for offline verification.
@@ -90,4 +90,4 @@ class MultiCaMeLGovernedPipeline(BasePipelineElement):
             self.last_run_metadata = metadata
             self.last_trace_events = list(session.gateway.events)
         result_messages = build_messages(query, metadata, answer)
-        return query, runtime, env, result_messages, {**(extra_args or {}), "coordscope_metadata": metadata}
+        return query, runtime, env, result_messages, {**(extra_args or {}), "teampermit_metadata": metadata}

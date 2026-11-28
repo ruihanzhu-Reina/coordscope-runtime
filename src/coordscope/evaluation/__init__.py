@@ -1,1 +1,0 @@
-"""coordscope.evaluation package."""

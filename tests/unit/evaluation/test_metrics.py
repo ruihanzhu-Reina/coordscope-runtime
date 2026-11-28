@@ -1,4 +1,4 @@
-from coordscope.evaluation.metrics import official_outcomes, resource_metrics, summarize
+from teampermit.evaluation.metrics import official_outcomes, resource_metrics, summarize
 
 
 def test_clean_security_sentinel_is_not_an_attack_success():

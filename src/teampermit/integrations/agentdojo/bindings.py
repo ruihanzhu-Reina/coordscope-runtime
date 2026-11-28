@@ -6,11 +6,11 @@ from typing import Any
 from agentdojo.functions_runtime import Env, FunctionCall, FunctionsRuntime
 from agentdojo.types import ChatAssistantMessage, ChatMessage, ChatUserMessage, text_content_block_from_string
 
-from coordscope.security.manifest import tool_spec
+from teampermit.security.manifest import tool_spec
 
 
 def bind_tool(runtime: FunctionsRuntime, env: Env, function: Any, *, observer=None) -> dict[str, Any]:
-    """Convert one AgentDojo Function into CoordScope's tool schema + bound handler."""
+    """Convert one AgentDojo Function into TeamPermit's tool schema + bound handler."""
 
     schema = function.parameters.model_json_schema()
 
@@ -53,12 +53,12 @@ def _text_blocks(value: Any) -> list[dict[str, str]]:
 
 
 def build_messages(query: str, metadata: dict[str, Any], final_answer: str) -> list[ChatMessage]:
-    """Project CoordScope's interaction logs into AgentDojo's official message shape."""
+    """Project TeamPermit's interaction logs into AgentDojo's official message shape."""
 
     messages: list[ChatMessage] = [ChatUserMessage(role="user", content=[text_content_block_from_string(query)])]
     # The official judge reconstructs its function trace from assistant calls.
     # Use actual FunctionsRuntime invocations, including calls from discarded
-    # stages, and exclude CoordScope's synthetic/skipped calls and proposals.
+    # stages, and exclude TeamPermit's synthetic/skipped calls and proposals.
     records = metadata.get("agentdojo_runtime_calls", [])
     logs = [{"assistant_message": {"content": ""}, "tool_calls": [record]} for record in records]
 
@@ -78,7 +78,7 @@ def build_messages(query: str, metadata: dict[str, Any], final_answer: str) -> l
                 call = FunctionCall(
                     function=str(record.get("tool_name", "")),
                     args=dict(record.get("arguments", {}) or {}),
-                    id=str(record.get("id") or f"coordscope-call-{index}-{call_index}"),
+                    id=str(record.get("id") or f"teampermit-call-{index}-{call_index}"),
                 )
                 assistant["tool_calls"].append(call)
             messages.append(assistant)

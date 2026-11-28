@@ -23,7 +23,7 @@ def run_episode(args):
     from agentdojo.logging import OutputLogger
     from agentdojo.task_suite.load_suites import get_suite
 
-    from coordscope.integrations.agentdojo.pipeline import MultiCaMeLGovernedPipeline
+    from teampermit.integrations.agentdojo.pipeline import MultiCaMeLGovernedPipeline
 
     run_id = args.run_id or uuid.uuid4().hex
     if not run_id or run_id in {".", ".."} or any(c in run_id for c in "/\\:"):
@@ -79,7 +79,7 @@ def run_episode(args):
         error = error or "No validated live usage; not a safety result"
     exposed = [request for request in completed if request["matched_injection_keys"]]
     result = dict(
-        system="CoordScope",
+        system="TeamPermit",
         benchmark="multiagentdojo_partition_adapter",
         benchmark_version=args.benchmark_version,
         suite=args.suite,

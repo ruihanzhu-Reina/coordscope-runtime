@@ -5,8 +5,8 @@ import unittest
 
 from pydantic import BaseModel
 
-from coordscope.evidence.provenance import SourceRef
-from coordscope.evidence.store import EvidenceStore
+from teampermit.evidence.provenance import SourceRef
+from teampermit.evidence.store import EvidenceStore
 
 
 class Contact(BaseModel):

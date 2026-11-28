@@ -4,9 +4,9 @@ import json
 
 import pytest
 
-from coordscope.agents.interpreter import IsolationError, Value
-from coordscope.agents.roles import SubAgentSpec
-from coordscope.agents.session import IsolatedSession, Limits
+from teampermit.agents.interpreter import IsolationError, Value
+from teampermit.agents.roles import SubAgentSpec
+from teampermit.agents.session import IsolatedSession, Limits
 from tests.helpers.scripted import Script, agent, call, lit, plan, ref
 
 

@@ -1,60 +1,60 @@
 {
   "src/agentdojo_manta/multicamel/session.py": [
-    "src/coordscope/agents/session.py"
+    "src/teampermit/agents/session.py"
   ],
   "src/agentdojo_manta/multicamel/interpreter.py": [
-    "src/coordscope/agents/interpreter.py"
+    "src/teampermit/agents/interpreter.py"
   ],
   "src/agentdojo_manta/multicamel/prompts.py": [
-    "src/coordscope/agents/prompts.py"
+    "src/teampermit/agents/prompts.py"
   ],
   "src/agentdojo_manta/multicamel/pipeline.py": [
-    "src/coordscope/integrations/agentdojo/pipeline.py"
+    "src/teampermit/integrations/agentdojo/pipeline.py"
   ],
   "src/agentdojo_manta/multicamel/partitions.py": [
-    "src/coordscope/integrations/agentdojo/partitions.py",
-    "src/coordscope/agents/roles.py"
+    "src/teampermit/integrations/agentdojo/partitions.py",
+    "src/teampermit/agents/roles.py"
   ],
   "upstreams/manta/MAS/self_evolved/governed_gateway.py": [
-    "src/coordscope/security/gateway.py"
+    "src/teampermit/security/gateway.py"
   ],
   "upstreams/manta/MAS/self_evolved/tool_gateway.py": [
-    "src/coordscope/security/read_gateway.py"
+    "src/teampermit/security/read_gateway.py"
   ],
   "upstreams/manta/MAS/self_evolved/action_policy.py": [
-    "src/coordscope/security/policy.py"
+    "src/teampermit/security/policy.py"
   ],
   "upstreams/manta/MAS/self_evolved/tool_manifest.py": [
-    "src/coordscope/security/manifest.py"
+    "src/teampermit/security/manifest.py"
   ],
   "upstreams/manta/MAS/self_evolved/policy_compiler.py": [
-    "src/coordscope/security/compiler.py"
+    "src/teampermit/security/compiler.py"
   ],
   "upstreams/manta/MAS/self_evolved/evidence_store.py": [
-    "src/coordscope/evidence/store.py"
+    "src/teampermit/evidence/store.py"
   ],
   "upstreams/manta/MAS/self_evolved/provenance_graph.py": [
-    "src/coordscope/evidence/provenance.py"
+    "src/teampermit/evidence/provenance.py"
   ],
   "src/agentdojo_manta/providers.py": [
-    "src/coordscope/models/providers.py"
+    "src/teampermit/models/providers.py"
   ],
   "src/agentdojo_manta/budget.py": [
-    "src/coordscope/models/budget.py"
+    "src/teampermit/models/budget.py"
   ],
   "src/agentdojo_manta/deepseek_pro.py": [
-    "src/coordscope/models/validation.py"
+    "src/teampermit/models/validation.py"
   ],
   "src/agentdojo_manta/metrics.py": [
-    "src/coordscope/evaluation/metrics.py"
+    "src/teampermit/evaluation/metrics.py"
   ],
   "src/agentdojo_manta/adapter.py": [
-    "src/coordscope/models/client.py",
-    "src/coordscope/integrations/agentdojo/bindings.py"
+    "src/teampermit/models/client.py",
+    "src/teampermit/integrations/agentdojo/bindings.py"
   ],
   "scripts/manta/run_agentdojo_manta.py": [
-    "src/coordscope/evaluation/runner.py",
-    "src/coordscope/cli.py"
+    "src/teampermit/evaluation/runner.py",
+    "src/teampermit/cli.py"
   ],
   "tests/manta/test_multicamel_isolation.py": [
     "tests/unit/agents/test_isolation.py",

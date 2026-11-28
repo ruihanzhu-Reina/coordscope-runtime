@@ -5,10 +5,10 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 
-from coordscope.evidence.store import EvidenceStore
-from coordscope.security.compiler import compiler_messages
-from coordscope.security.gateway import GovernedGateway
-from coordscope.security.policy import TaskContract
+from teampermit.evidence.store import EvidenceStore
+from teampermit.security.compiler import compiler_messages
+from teampermit.security.gateway import GovernedGateway
+from teampermit.security.policy import TaskContract
 
 from .interpreter import IsolationError, PlanInterpreter, Value, freeze
 from .prompts import EXTRACT_SYSTEM, PLAN_SYSTEM

@@ -30,7 +30,7 @@ means "not needed in this new current-method project", not "has no research valu
 
 ## Behavior changes made explicit
 
-- Import paths/package identity become `coordscope`; old compatibility shims and
+- Import paths/package identity become `teampermit`; old compatibility shims and
   `AdapterPaths` are removed, not kept as unused alternate routes.
 - The current fresh no-tool provider path is extracted from the old MANTA wrapper.
   There is no mock fallback or hidden retry. Invalid usage/content/tool calls fail
@@ -41,7 +41,7 @@ means "not needed in this new current-method project", not "has no research valu
 - Provider journals record metadata rather than raw prompt/response bodies.
 - The role policy now lives directly in `security.policy.TaskContract`; gateway
   permissions still establish which specialist may execute a tool.
-- Run metadata uses `coordscope_metadata`, replacing the legacy `manta_run_metadata` key.
+- Run metadata uses `teampermit_metadata`, replacing the legacy `manta_run_metadata` key.
 - The runner refuses an existing run directory; failed/incomplete runs never count
   as security wins. Task/attack/security judges remain in the unmodified benchmark.
 

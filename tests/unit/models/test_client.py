@@ -4,7 +4,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from coordscope.models.client import IsolatedClient
+from teampermit.models.client import IsolatedClient
 
 
 def client(monkeypatch, response=None):

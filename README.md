@@ -6,12 +6,12 @@ TeamPermit combines instruction/data isolation, cross-agent provenance tracking,
 and task-scoped authorization to constrain tool execution across an agent team.
 
 **Current implementation:** [TeamPermit](https://github.com/ruihanzhu-Reina/TeamPermit).
-**Historical experiments and earlier methods:** [CoordScope](https://github.com/ruihanzhu-Reina/CoordScope).
-Previously named CoordScope Runtime. The installable Python package, import paths,
-and CLI remain named `coordscope` for compatibility.
+**Historical experiments and earlier methods:** [Legacy research repository](https://github.com/ruihanzhu-Reina/CoordScope).
+The installable Python package, import paths, and CLI are named `teampermit`.
+For renamed interfaces and output identifiers, see the [package rename notes](docs/migration/teampermit-rename.md).
 
 This project extracts the current `multicamel_governed` method from
-[`ruihanzhu-Reina/CoordScope`](https://github.com/ruihanzhu-Reina/CoordScope),
+[the legacy research repository](https://github.com/ruihanzhu-Reina/CoordScope),
 commit `f0a3ba02ccaece21491301d7fb8fec950644575f` on
 `feat/folded-runtime-governance`. The old repository remains the historical record.
 
@@ -22,7 +22,7 @@ git clone https://github.com/ruihanzhu-Reina/TeamPermit.git
 cd TeamPermit
 uv sync --extra benchmark
 uv run pytest
-uv run coordscope check
+uv run teampermit check
 uv run python examples/offline_payment.py
 ```
 
@@ -34,7 +34,7 @@ For a live episode, configure credentials and provider settings in your shell
 (see `.env.example`; it is not loaded automatically), then run:
 
 ```powershell
-uv run coordscope run --suite slack --user-task user_task_2 --clean --model deepseek-flash
+uv run teampermit run --suite slack --user-task user_task_2 --clean --model deepseek-flash
 ```
 
 An attacked episode uses `--attack <registered-name> --injection-task <task-id>`
@@ -52,13 +52,13 @@ Existing run directories are never overwritten.
 | Exact argument/source checks | `security/gateway.py`, `evidence/store.py` |
 | Shared receipts and unknown outcomes | `security/gateway.py` |
 
-All paths in the table are relative to `src/coordscope/`. Start reading with
+All paths in the table are relative to `src/teampermit/`. Start reading with
 `agents/session.py`, then the interpreter, then the gateway.
 
 ## Layout
 
 ```text
-src/coordscope/       Current algorithm and installable CLI
+src/teampermit/       Current algorithm and installable CLI
   agents/            Isolated agents, bounded plans, role contracts
   security/          Manifest, compiler, exact capabilities, read cache
   evidence/          Immutable evidence and provenance

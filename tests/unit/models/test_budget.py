@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-from coordscope.models.budget import BudgetExceeded, RequestBudget
+from teampermit.models.budget import BudgetExceeded, RequestBudget
 
 
 class BudgetTests(unittest.TestCase):

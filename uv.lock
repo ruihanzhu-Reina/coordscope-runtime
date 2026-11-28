@@ -545,7 +545,7 @@ wheels = [
 ]
 
 [[package]]
-name = "coordscope"
+name = "teampermit"
 version = "0.2.0"
 source = { editable = "." }
 dependencies = [

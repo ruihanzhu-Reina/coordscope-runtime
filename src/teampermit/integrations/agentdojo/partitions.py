@@ -5,7 +5,7 @@ MIT copyright and attribution: docs/references/multiagentdojo-license.md.
 Only the role/tool partition is reused; execution is our bounded interpreter.
 """
 
-from coordscope.agents.roles import SubAgentSpec
+from teampermit.agents.roles import SubAgentSpec
 
 SUITE_PARTITIONS: dict[str, tuple[SubAgentSpec, ...]] = {
     "workspace": (

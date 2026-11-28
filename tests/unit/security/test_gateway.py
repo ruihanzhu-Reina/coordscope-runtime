@@ -4,9 +4,9 @@ import threading
 
 import pytest
 
-from coordscope.evidence.store import EvidenceStore
-from coordscope.security.gateway import GovernedGateway
-from coordscope.security.policy import TaskContract
+from teampermit.evidence.store import EvidenceStore
+from teampermit.security.gateway import GovernedGateway
+from teampermit.security.policy import TaskContract
 
 
 def tool(name, handler):
@@ -82,7 +82,7 @@ def test_state_change_during_review_invalidates_approval():
     g, calls, reviews = gateway(review=review)
     compiled = dict(recipient="Alice", amount=1)
     # Install a host-issued exact grant without a per-tool blueprint restriction.
-    from coordscope.security.gateway import canonical
+    from teampermit.security.gateway import canonical
 
     g.capabilities[("send_money", canonical(compiled))] = g._capability("send_money", compiled, "isolated_compiler", 0)
     result = g.call("agent_0", "send_money", ARGS)
