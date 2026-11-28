@@ -1,10 +1,14 @@
-# CoordScope Runtime
+# TeamPermit
 
-Isolated multi-agent execution with task-scoped parameter authorization.
+**Secure Multi-Agent Execution with Task-Scoped Authorization**
 
-**Current implementation:** [coordscope-runtime](https://github.com/ruihanzhu-Reina/coordscope-runtime).
+TeamPermit combines instruction/data isolation, cross-agent provenance tracking,
+and task-scoped authorization to constrain tool execution across an agent team.
+
+**Current implementation:** [TeamPermit](https://github.com/ruihanzhu-Reina/TeamPermit).
 **Historical experiments and earlier methods:** [CoordScope](https://github.com/ruihanzhu-Reina/CoordScope).
-The installable Python package and CLI remain named `coordscope`.
+Previously named CoordScope Runtime. The installable Python package, import paths,
+and CLI remain named `coordscope` for compatibility.
 
 This project extracts the current `multicamel_governed` method from
 [`ruihanzhu-Reina/CoordScope`](https://github.com/ruihanzhu-Reina/CoordScope),
@@ -14,13 +18,15 @@ commit `f0a3ba02ccaece21491301d7fb8fec950644575f` on
 ## Quick start
 
 ```powershell
+git clone https://github.com/ruihanzhu-Reina/TeamPermit.git
+cd TeamPermit
 uv sync --extra benchmark
 uv run pytest
 uv run coordscope check
 uv run python examples/offline_payment.py
 ```
 
-All four commands above are offline after dependencies are installed. Tests use
+The check, test, and example commands are offline after dependencies are installed. Tests use
 explicit scripted completions and real benchmark environments where appropriate;
 they are not model-performance measurements.
 

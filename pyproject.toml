@@ -1,15 +1,15 @@
 [project]
 name = "coordscope"
 version = "0.2.0"
-description = "Isolated multi-agent execution with shared parameter authorization"
+description = "TeamPermit: secure multi-agent execution with task-scoped authorization"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "MIT"
 dependencies = ["openai>=1.59.7"]
 
 [project.urls]
-Repository = "https://github.com/ruihanzhu-Reina/coordscope-runtime"
-Issues = "https://github.com/ruihanzhu-Reina/coordscope-runtime/issues"
+Repository = "https://github.com/ruihanzhu-Reina/TeamPermit"
+Issues = "https://github.com/ruihanzhu-Reina/TeamPermit/issues"
 
 [project.optional-dependencies]
 benchmark = ["agentdojo==0.1.35"]

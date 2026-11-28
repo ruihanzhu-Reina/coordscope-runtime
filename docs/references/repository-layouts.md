@@ -3,10 +3,10 @@
 Inspected the actual GitHub directory trees on 2026-11-27 (Asia/Shanghai).
 These projects do not share one mandatory "large-project folder order". Their
 useful commonality is separation of runtime code, tests, documentation, examples,
-and development automation. CoordScope adopts that separation without copying
+and development automation. TeamPermit adopts that separation without copying
 unneeded services, deployment stacks, or empty layers.
 
-| Repository inspected | Concrete observation | CoordScope decision |
+| Repository inspected | Concrete observation | TeamPermit decision |
 |---|---|---|
 | [Inspect AI root](https://github.com/UKGovernmentBEIS/inspect_ai/tree/main), [source](https://github.com/UKGovernmentBEIS/inspect_ai/tree/main/src/inspect_ai), [tests](https://github.com/UKGovernmentBEIS/inspect_ai/tree/main/tests) | `src/inspect_ai` contains domain modules such as `agent`, `model`, `tool`, `scorer`; tests reflect responsibilities; docs/examples/CI live separately | Installable `src/coordscope` package with focused responsibility modules and unit/integration tests |
 | [Pydantic AI root](https://github.com/pydantic/pydantic-ai/tree/main), [slim package](https://github.com/pydantic/pydantic-ai/tree/main/pydantic_ai_slim) | Runtime packages, examples, docs, tests and scripts are explicit; the slim package has its own packaging metadata | Keep core algorithm separate from optional benchmark integration; use pyproject/lock rather than sys.path injection |
